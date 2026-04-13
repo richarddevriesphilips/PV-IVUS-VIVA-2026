@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState, useCallback } from "react";
 import svgPaths from "./svg-bq94eoh0jd";
+import HemoDisplay from "../app/components/HemoDisplay";
 import imgImage2 from "figma:asset/2a97af415690c33899ec327cbd66050b75adba61.png";
 import imgRectangle10 from "figma:asset/c9086bd51fc782e98eaacdee902113f255daaed2.png";
 import imgRectangle11 from "figma:asset/0aa26374bbdf16857809de604ec48e1e0389d7d8.png";
@@ -1157,30 +1159,146 @@ function Frame61() {
   );
 }
 
+const imgStudyStateIcon = new URL("../assets/ce32fd58653bb29169f77245470cd0ac20f243cb.svg", import.meta.url).href;
+
 function Column() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [phase, setPhase] = useState<string>("live");
+
+  const handleMessage = useCallback((e: MessageEvent) => {
+    if (!e.data || typeof e.data.type !== "string") return;
+
+    if (e.data.type === "intrasight-phase") {
+      setPhase(e.data.phase);
+      const vid = videoRef.current;
+      if (!vid) return;
+
+      if (e.data.phase === "recording") {
+        vid.currentTime = 0;
+        vid.play();
+      } else if (e.data.phase === "analysis") {
+        vid.pause();
+      } else if (e.data.phase === "live") {
+        vid.pause();
+        vid.currentTime = 0;
+      }
+    }
+
+    if (e.data.type === "intrasight-recording-time" && phase === "recording") {
+      const vid = videoRef.current;
+      if (vid && Math.abs(vid.currentTime - e.data.time) > 0.3) {
+        vid.currentTime = e.data.time;
+      }
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [handleMessage]);
+
   return (
-    <div className="bg-[#403434] content-stretch flex flex-col h-[1650px] items-center justify-center relative shrink-0 w-[1530px]" data-name="Column">
-      <p className="font-['CentraleSans:Medium',sans-serif] leading-[28px] not-italic relative shrink-0 text-[40px] text-white whitespace-nowrap">Live X-ray</p>
+    <div className="bg-black content-stretch flex flex-col h-[1650px] relative shrink-0 w-[1530px] overflow-hidden border-2 border-[#3b3b3b]" data-name="Column">
+      {/* Patient bar */}
+      <div className="bg-[#171717] content-stretch flex gap-[20px] h-[40px] items-center px-[24px] py-[2px] shrink-0 w-full">
+        <p className="font-['CentraleSans:Medium',sans-serif] leading-[20px] not-italic text-[#41c9fe] text-[20px] whitespace-nowrap shrink-0">LIVE</p>
+        <div className="flex gap-[12px] items-center overflow-clip shrink-0">
+          <div className="relative shrink-0 w-[32px] h-[32px] flex items-center justify-center">
+            <img alt="" className="w-[28px] h-[20px]" src={imgStudyStateIcon} />
+          </div>
+          <p className="font-['CentraleSans:Book',sans-serif] leading-[36px] not-italic text-[#41c9fe] text-[20px] whitespace-nowrap shrink-0">DOE, Jane</p>
+        </div>
+        <div className="flex font-['CentraleSans:Book',sans-serif] gap-[8px] items-center not-italic text-[#d6d6d6] text-[20px] whitespace-nowrap shrink-0">
+          <p className="leading-[24px] opacity-50">Patient ID</p>
+          <p className="leading-[24px]">2345412</p>
+        </div>
+        <div className="flex font-['CentraleSans:Book',sans-serif] gap-[8px] items-center not-italic text-[#d6d6d6] text-[20px] shrink-0">
+          <p className="leading-[24px] opacity-50">DOB</p>
+          <p className="leading-[24px]">12-Apr-1949 (74y)</p>
+        </div>
+      </div>
+      {/* Video */}
+      <video
+        ref={videoRef}
+        src="/Postrecord.mov"
+        muted
+        playsInline
+        className="w-full flex-1 min-h-0 object-cover"
+      />
     </div>
   );
 }
 
 function Column1() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [phase, setPhase] = useState<string>("live");
+
+  const handleMessage = useCallback((e: MessageEvent) => {
+    if (!e.data || typeof e.data.type !== "string") return;
+
+    if (e.data.type === "intrasight-phase") {
+      setPhase(e.data.phase);
+      const vid = videoRef.current;
+      if (!vid) return;
+
+      if (e.data.phase === "recording") {
+        vid.currentTime = 0;
+        vid.play();
+      } else if (e.data.phase === "analysis") {
+        vid.pause();
+      } else if (e.data.phase === "live") {
+        vid.pause();
+        vid.currentTime = 0;
+      }
+    }
+
+    if (e.data.type === "intrasight-recording-time" && phase === "recording") {
+      const vid = videoRef.current;
+      if (vid && Math.abs(vid.currentTime - e.data.time) > 0.3) {
+        vid.currentTime = e.data.time;
+      }
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [handleMessage]);
+
   return (
-    <div className="bg-[#822929] content-stretch flex flex-col h-[646px] items-center justify-center relative shrink-0 w-[569px]" data-name="Column">
-      <p className="font-['CentraleSans:Medium',sans-serif] leading-[28px] not-italic relative shrink-0 text-[40px] text-white whitespace-nowrap">Ref X-ray</p>
+    <div className="bg-black content-stretch flex flex-col h-[646px] relative shrink-0 w-[569px] overflow-hidden border border-[#3b3b3b]" data-name="Column">
+      {/* Patient bar */}
+      <div className="bg-[#171717] content-stretch flex gap-[8px] h-[20px] items-center px-[10px] py-[1px] shrink-0 w-full">
+        <p className="font-['CentraleSans:Medium',sans-serif] leading-[10px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">LIVE</p>
+        <div className="flex gap-[4px] items-center overflow-clip shrink-0">
+          <img alt="" className="w-[11px] h-[8px] shrink-0" src={imgStudyStateIcon} />
+          <p className="font-['CentraleSans:Book',sans-serif] leading-[14px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">DOE, Jane</p>
+        </div>
+        <div className="flex font-['CentraleSans:Book',sans-serif] gap-[3px] items-center not-italic text-[#d6d6d6] text-[8px] whitespace-nowrap shrink-0">
+          <p className="leading-[10px] opacity-50">Patient ID</p>
+          <p className="leading-[10px]">2345412</p>
+        </div>
+        <div className="flex font-['CentraleSans:Book',sans-serif] gap-[3px] items-center not-italic text-[#d6d6d6] text-[8px] shrink-0">
+          <p className="leading-[10px] opacity-50">DOB</p>
+          <p className="leading-[10px]">12-Apr-1949 (74y)</p>
+        </div>
+      </div>
+      {/* Video */}
+      <video
+        ref={videoRef}
+        src="/Postrecord.mov"
+        muted
+        playsInline
+        className="w-full flex-1 min-h-0 object-cover"
+      />
     </div>
   );
 }
 
 function Frame62() {
   return (
-    <div className="bg-[#761414] flex-[1_0_0] h-[945px] min-h-px min-w-px relative">
-      <div className="flex flex-row items-center justify-center size-full">
-        <div className="content-stretch flex items-center justify-center px-[196px] py-[309px] relative size-full">
-          <p className="font-['CentraleSans:Medium',sans-serif] leading-[28px] not-italic relative shrink-0 text-[40px] text-white whitespace-nowrap">Ref X-ray</p>
-        </div>
-      </div>
+    <div className="flex-[1_0_0] h-[945px] min-h-px min-w-px relative overflow-hidden">
+      <HemoDisplay />
     </div>
   );
 }
