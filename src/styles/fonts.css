@@ -1,0 +1,39 @@
+@font-face {
+  font-family: "CentraleSans:Medium";
+  src: url("../assets/fonts/CentraleSans-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "CentraleSans:Book";
+  src: url("../assets/fonts/CentraleSans-Book.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "CentraleSansCnd:Medium";
+  src: url("../assets/fonts/CentraleSansCnd-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "CentraleSansDS:Book";
+  src: url("../assets/fonts/CentraleSans-Book.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto_Sans:Medium";
+  src: url("https://fonts.gstatic.com/s/notosans/v36/o-0bIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99d.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
