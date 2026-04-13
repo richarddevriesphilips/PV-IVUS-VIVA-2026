@@ -23,33 +23,19 @@ function useFitScale() {
 }
 
 export default function App() {
-  const fitScale = useFitScale();
-  const [zoom, setZoom] = useState(1);
-  const [autoFit, setAutoFit] = useState(true);
-
-  const activeScale = autoFit ? fitScale : zoom;
-
-  const zoomIn = () => {
-    setAutoFit(false);
-    setZoom((z) => Math.min(z + 0.1, 1));
-  };
-  const zoomOut = () => {
-    setAutoFit(false);
-    setZoom((z) => Math.max(z - 0.1, 0.1));
-  };
-  const fitToScreen = () => setAutoFit(true);
+  const scale = useFitScale();
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-black relative">
+    <div className="w-screen h-screen overflow-hidden bg-black">
       <div
         style={{
-          width: DESIGN_W * activeScale,
-          height: DESIGN_H * activeScale,
+          width: DESIGN_W * scale,
+          height: DESIGN_H * scale,
         }}
       >
         <div
           style={{
-            transform: `scale(${activeScale})`,
+            transform: `scale(${scale})`,
             transformOrigin: "top left",
             width: DESIGN_W,
             height: DESIGN_H,
@@ -57,31 +43,6 @@ export default function App() {
         >
           <FlexVisionSmartSizeOn />
         </div>
-      </div>
-
-      {/* Zoom controls */}
-      <div className="fixed bottom-4 left-4 flex items-center gap-1 bg-[#2a2a2a] rounded-lg shadow-lg border border-[#555] px-1 py-1 z-50">
-        <button
-          onClick={zoomOut}
-          className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-[#444] rounded text-lg leading-none"
-          title="Zoom out"
-        >
-          −
-        </button>
-        <button
-          onClick={fitToScreen}
-          className="px-2 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#444] rounded text-xs font-mono min-w-[52px]"
-          title="Fit to screen"
-        >
-          {Math.round(activeScale * 100)}%
-        </button>
-        <button
-          onClick={zoomIn}
-          className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-[#444] rounded text-lg leading-none"
-          title="Zoom in"
-        >
-          +
-        </button>
       </div>
     </div>
   );

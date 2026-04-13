@@ -1196,8 +1196,15 @@ function Frame63() {
 
 function Boom() {
   return (
-    <div className="bg-[#790000] content-stretch flex h-[1080px] items-center justify-center overflow-clip relative shrink-0 w-full" data-name="Boom">
-      <p className="font-['CentraleSans:Medium',sans-serif] leading-[28px] not-italic relative shrink-0 text-[40px] text-white whitespace-nowrap">Intrasight</p>
+    <div className="bg-black content-stretch flex h-[1080px] items-center justify-center overflow-clip relative shrink-0 w-full" data-name="Boom">
+      <iframe
+        src="http://localhost:5174"
+        title="Intrasight"
+        className="w-full h-full border-none"
+        style={{ overflow: "hidden" }}
+        scrolling="no"
+        allow="autoplay"
+      />
     </div>
   );
 }
