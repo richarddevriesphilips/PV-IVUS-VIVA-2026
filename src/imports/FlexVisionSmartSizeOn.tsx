@@ -222,21 +222,61 @@ function Group7() {
   );
 }
 
-function Frame3() {
+const imgFluoroIndicator = new URL("../../livex-ray.svg", import.meta.url).href;
+
+function RadiationIndicator() {
   return (
-    <div className="content-stretch flex flex-col items-start pl-[16px] relative shrink-0">
-      <div className="h-[34px] relative shrink-0 w-[36px]" data-name="image 2">
-        <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage2} />
-      </div>
-    </div>
+    <img alt="Fluoro on" src={imgFluoroIndicator} width={48} height={48} className="shrink-0" />
   );
 }
 
 function SystemState() {
+  const [fluoroOn, setFluoroOn] = useState(false);
+
+  useEffect(() => {
+    const onDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        setFluoroOn(true);
+      }
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setFluoroOn(false);
+      }
+    };
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === "intrasight-fluoro") {
+        setFluoroOn(e.data.on);
+      }
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    window.addEventListener("message", onMsg);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+      window.removeEventListener("message", onMsg);
+    };
+  }, []);
+
   return (
     <div className="absolute content-stretch flex flex-col gap-[40px] items-start left-[6px] top-[44px]" data-name="System state">
-      <Frame3 />
+      <div className="content-stretch flex flex-col items-start pl-[16px] relative shrink-0">
+        <div className="h-[34px] relative shrink-0 w-[36px]" data-name="image 2">
+          <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage2} />
+        </div>
+      </div>
       <div className="bg-[#4d4d4d] h-px shrink-0 w-[296px]" />
+      {fluoroOn && (
+        <img
+          alt="Fluoro on"
+          src={imgFluoroIndicator}
+          width={48}
+          height={48}
+          className="absolute left-1/2 top-0 -translate-x-1/2 pointer-events-none"
+        />
+      )}
     </div>
   );
 }
@@ -1163,7 +1203,59 @@ const imgStudyStateIcon = new URL("../assets/ce32fd58653bb29169f77245470cd0ac20f
 
 function Column() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const freezeCanvasRef = useRef<HTMLCanvasElement>(null);
   const [phase, setPhase] = useState<string>("live");
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const [fluoroOn, setFluoroOn] = useState(false);
+  const fluoroOnRef = useRef(fluoroOn);
+  fluoroOnRef.current = fluoroOn;
+  const [freezeFrame, setFreezeFrame] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !e.repeat) setFluoroOn(true);
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") setFluoroOn(false);
+    };
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === "intrasight-fluoro") {
+        setFluoroOn(e.data.on);
+      }
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    window.addEventListener("message", onMsg);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+      window.removeEventListener("message", onMsg);
+    };
+  }, []);
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    if (fluoroOn) {
+      setFreezeFrame(null);
+      vid.playbackRate = phaseRef.current === "recording" ? 1.0 : 0.5;
+      vid.play();
+    } else {
+      // Capture the last frame before pausing
+      if (vid.videoWidth > 0 && vid.videoHeight > 0) {
+        const canvas = freezeCanvasRef.current || document.createElement("canvas");
+        canvas.width = vid.videoWidth;
+        canvas.height = vid.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(vid, 0, 0);
+          setFreezeFrame(canvas.toDataURL("image/png"));
+        }
+      }
+      vid.pause();
+    }
+  }, [fluoroOn]);
 
   const handleMessage = useCallback((e: MessageEvent) => {
     if (!e.data || typeof e.data.type !== "string") return;
@@ -1175,22 +1267,20 @@ function Column() {
 
       if (e.data.phase === "recording") {
         vid.currentTime = 0;
-        vid.play();
-      } else if (e.data.phase === "analysis") {
-        vid.pause();
+        vid.playbackRate = 1.0;
       } else if (e.data.phase === "live") {
-        vid.pause();
         vid.currentTime = 0;
+        vid.playbackRate = 0.5;
       }
     }
 
-    if (e.data.type === "intrasight-recording-time" && phase === "recording") {
+    if (e.data.type === "intrasight-recording-time" && phaseRef.current === "recording") {
       const vid = videoRef.current;
       if (vid && Math.abs(vid.currentTime - e.data.time) > 0.3) {
         vid.currentTime = e.data.time;
       }
     }
-  }, [phase]);
+  }, []);
 
   useEffect(() => {
     window.addEventListener("message", handleMessage);
@@ -1217,14 +1307,33 @@ function Column() {
           <p className="leading-[24px]">12-Apr-1949 (74y)</p>
         </div>
       </div>
-      {/* Video */}
-      <video
-        ref={videoRef}
-        src="/Postrecord.mov"
-        muted
-        playsInline
-        className="w-full flex-1 min-h-0 object-cover"
-      />
+      {/* Video + freeze frame overlay */}
+      <div className="relative flex-1 min-h-0 w-full">
+        <video
+          ref={videoRef}
+          src="/Postrecord.mov"
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        {freezeFrame && !fluoroOn && (
+          <img
+            alt=""
+            src={freezeFrame}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          />
+        )}
+        <canvas ref={freezeCanvasRef} className="hidden" />
+      </div>
+      {fluoroOn && (
+        <img
+          alt="Fluoro on"
+          src={imgFluoroIndicator}
+          width={96}
+          height={96}
+          className="absolute top-[48px] right-[12px] pointer-events-none"
+        />
+      )}
     </div>
   );
 }

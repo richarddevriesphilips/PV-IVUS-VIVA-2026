@@ -1,68 +1,135 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-// --- Waveform data generators ---
+const BG_IMG = new URL(
+  "../../assets/d5945b9699f457d7abe87be3f091febee6b0befc.png",
+  import.meta.url
+).href;
 
-function generateEcgCycle(length: number): number[] {
-  const data: number[] = [];
-  for (let i = 0; i < length; i++) {
-    const t = i / length;
+// Native design resolution
+const NW = 1920;
+const NH = 1080;
+
+// Waveform regions in native coordinates
+const ECG_REGION = { x: 120, y: 130, w: 1440, h: 400 };
+const AO_REGION  = { x: 120, y: 655, w: 1440, h: 120 };
+const SPO2_REGION = { x: 120, y: 845, w: 1440, h: 50 };
+
+const SWEEP_GAP = 40; // width of the black eraser bar in native px
+const SPEED = 1.8;    // native pixels per frame
+
+// Areas to paint over on the background image
+const DEMO_MODE_RECT = { x: 640, y: 550, w: 390, h: 85 };
+
+// Cover the entire bottom vitals strip so we redraw it dynamically
+const VITALS_STRIP_RECT = { x: 0, y: 1000, w: 1920, h: 80 };
+
+// ECG lead config: 6 leads stacked within ECG_REGION
+const ECG_LEADS = [
+  { label: "I",   amp: 0.6,  invert: false, color: "#cccccc" },
+  { label: "II",  amp: 1.0,  invert: false, color: "#00cc00" },
+  { label: "III", amp: 0.45, invert: false, color: "#cccccc" },
+  { label: "aVR", amp: 0.55, invert: true,  color: "#cccccc" },
+  { label: "aVL", amp: 0.4,  invert: false, color: "#cccccc" },
+  { label: "V1",  amp: 0.5,  invert: false, color: "#cccccc" },
+];
+
+// --- Waveform generators ---
+
+function ecgCycle(len: number): number[] {
+  const d: number[] = [];
+  for (let i = 0; i < len; i++) {
+    const t = i / len;
     let v = 0;
-    if (t > 0.05 && t < 0.15) v = 0.1 * Math.sin(((t - 0.05) / 0.1) * Math.PI);
-    else if (t > 0.18 && t < 0.22) {
-      const qt = (t - 0.18) / 0.04;
-      if (qt < 0.25) v = -0.12;
-      else if (qt < 0.5) v = 0.85;
-      else if (qt < 0.75) v = -0.2;
+    // P wave
+    if (t > 0.04 && t < 0.12) v = 0.08 * Math.sin(((t - 0.04) / 0.08) * Math.PI);
+    // QRS complex
+    else if (t > 0.16 && t < 0.22) {
+      const q = (t - 0.16) / 0.06;
+      if (q < 0.2) v = -0.1;
+      else if (q < 0.45) v = 0.9;
+      else if (q < 0.65) v = -0.18;
       else v = 0;
-    } else if (t > 0.28 && t < 0.42) {
-      v = 0.18 * Math.sin(((t - 0.28) / 0.14) * Math.PI);
     }
-    data.push(v);
+    // T wave
+    else if (t > 0.28 && t < 0.42)
+      v = 0.2 * Math.sin(((t - 0.28) / 0.14) * Math.PI);
+    d.push(v);
   }
-  return data;
+  return d;
 }
 
-function generateEcgLeadVariant(length: number, amp: number, invert: boolean): number[] {
-  const base = generateEcgCycle(length);
-  return base.map((v) => (invert ? -v : v) * amp);
-}
-
-function generateAbpCycle(length: number): number[] {
-  const data: number[] = [];
-  for (let i = 0; i < length; i++) {
-    const t = i / length;
+function aoCycle(len: number): number[] {
+  const d: number[] = [];
+  for (let i = 0; i < len; i++) {
+    const t = i / len;
     let v: number;
-    if (t < 0.05) v = 84 + (t / 0.05) * 40;
-    else if (t < 0.12) {
-      const st = (t - 0.05) / 0.07;
-      v = 124 - st * 12;
-      if (st > 0.5 && st < 0.75) v += 5 * Math.sin(((st - 0.5) / 0.25) * Math.PI);
-    } else if (t < 0.35) {
-      v = 112 - ((t - 0.12) / 0.23) * 28;
-    } else {
-      v = 84;
-    }
-    data.push(v);
+    if (t < 0.06) v = 82 + (t / 0.06) * 42;
+    else if (t < 0.14) {
+      const s = (t - 0.06) / 0.08;
+      v = 124 - s * 14;
+      if (s > 0.45 && s < 0.7) v += 6 * Math.sin(((s - 0.45) / 0.25) * Math.PI);
+    } else if (t < 0.4) v = 110 - ((t - 0.14) / 0.26) * 28;
+    else v = 82;
+    d.push(v);
   }
-  return data;
+  return d;
 }
 
-// --- Canvas waveform renderer ---
-
-interface WaveformCanvasProps {
-  color: string;
-  lineWidth?: number;
-  speed?: number;
-  getData: () => number[];
-  yMin: number;
-  yMax: number;
+function spo2Cycle(len: number): number[] {
+  const d: number[] = [];
+  for (let i = 0; i < len; i++) {
+    const t = i / len;
+    let v = 0;
+    if (t < 0.15) v = Math.sin((t / 0.15) * Math.PI) * 0.7;
+    else if (t < 0.35) v = Math.sin(((t - 0.15) / 0.2) * Math.PI) * 0.3;
+    d.push(v);
+  }
+  return d;
 }
 
-function WaveformCanvas({ color, lineWidth = 1.5, speed = 2, getData, yMin, yMax }: WaveformCanvasProps) {
+// Build repeating waveform buffers (large enough to never run out)
+function buildBuffer(cycleFn: (len: number) => number[], cycleLen: number, totalLen: number, amp = 1, invert = false): number[] {
+  const buf: number[] = [];
+  while (buf.length < totalLen) {
+    const cycle = cycleFn(cycleLen);
+    for (const v of cycle) buf.push((invert ? -v : v) * amp);
+  }
+  return buf;
+}
+
+const BUF_LEN = 20000;
+const ecgBuffers = ECG_LEADS.map((l) => buildBuffer(ecgCycle, 160, BUF_LEN, l.amp, l.invert));
+const aoBuffer = buildBuffer(aoCycle, 130, BUF_LEN);
+const spo2Buffer = buildBuffer(spo2Cycle, 140, BUF_LEN);
+
+function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
+function drift(v: number, lo: number, hi: number, mag: number) {
+  return clamp(v + (Math.random() - 0.5) * mag, lo, hi);
+}
+
+export default function HemoDisplay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const bufferRef = useRef<number[]>([]);
+  const animRef = useRef(0);
+  const sweepRef = useRef(0);
   const offsetRef = useRef(0);
-  const animRef = useRef<number>(0);
+  const vitalsRef = useRef({
+    hr: 80, sys: 132, dia: 74, mean: 93, spo2: 100, pulse: 88, etco2: 30,
+  });
+
+  // Realistic vitals update timer
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const v = vitalsRef.current;
+      v.hr    = Math.round(drift(v.hr, 72, 88, 3));
+      v.sys   = Math.round(drift(v.sys, 118, 142, 4));
+      v.dia   = Math.round(drift(v.dia, 68, 82, 3));
+      v.mean  = Math.round((v.sys + 2 * v.dia) / 3);
+      v.spo2  = Math.round(drift(v.spo2, 97, 100, 1));
+      v.pulse = Math.round(drift(v.pulse, 74, 92, 3));
+      v.etco2 = Math.round(drift(v.etco2, 26, 35, 2));
+    }, 1500);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -70,242 +137,200 @@ function WaveformCanvas({ color, lineWidth = 1.5, speed = 2, getData, yMin, yMax
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const resize = () => {
-      canvas.width = canvas.clientWidth * 2;
-      canvas.height = canvas.clientHeight * 2;
-    };
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-    resize();
+    // Set canvas to native resolution
+    canvas.width = NW;
+    canvas.height = NH;
+
+    // Pre-fill all waveform regions and overlay areas with black
+    ctx.fillStyle = "#000";
+    ctx.fillRect(ECG_REGION.x, ECG_REGION.y, ECG_REGION.w, ECG_REGION.h);
+    ctx.fillRect(AO_REGION.x, AO_REGION.y, AO_REGION.w, AO_REGION.h);
+    ctx.fillRect(SPO2_REGION.x, SPO2_REGION.y, SPO2_REGION.w, SPO2_REGION.h);
+    ctx.fillRect(DEMO_MODE_RECT.x, DEMO_MODE_RECT.y, DEMO_MODE_RECT.w, DEMO_MODE_RECT.h);
+    ctx.fillRect(VITALS_STRIP_RECT.x, VITALS_STRIP_RECT.y, VITALS_STRIP_RECT.w, VITALS_STRIP_RECT.h);
 
     const draw = () => {
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      while (bufferRef.current.length < w + 400) {
-        bufferRef.current.push(...getData());
-      }
-
-      const data = bufferRef.current;
+      const sweep = sweepRef.current;
       const off = Math.floor(offsetRef.current);
+      const gapStart = sweep;
+      const gapEnd = sweep + SWEEP_GAP;
 
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth * 2;
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      for (let x = 0; x < w; x++) {
-        const val = data[off + x] ?? 0;
-        const y = h - ((val - yMin) / (yMax - yMin)) * h;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+      // --- Draw the sweep gap (black eraser) for each region ---
+      ctx.fillStyle = "#000";
+      for (const r of [ECG_REGION, AO_REGION, SPO2_REGION]) {
+        // Clear a slightly wider area ahead of the sweep
+        const clearStart = r.x + gapStart;
+        const clearW = SWEEP_GAP + SPEED + 2;
+        ctx.fillRect(clearStart, r.y, clearW, r.h);
+        // Handle wrap-around
+        if (gapEnd > r.w) {
+          ctx.fillRect(r.x, r.y, (gapEnd - r.w) + SPEED + 2, r.h);
+        }
       }
-      ctx.stroke();
 
-      offsetRef.current += speed;
-      if (off > 2000) {
-        bufferRef.current = bufferRef.current.slice(off);
-        offsetRef.current -= off;
+      // --- Draw fresh column(s) of waveform just behind the sweep ---
+      const cols = Math.ceil(SPEED) + 1;
+
+      // ECG leads
+      const leadH = ECG_REGION.h / ECG_LEADS.length;
+      for (let li = 0; li < ECG_LEADS.length; li++) {
+        const buf = ecgBuffers[li];
+        const yCenter = ECG_REGION.y + leadH * li + leadH / 2;
+        ctx.strokeStyle = ECG_LEADS[li].color;
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        let started = false;
+        for (let c = -1; c <= cols; c++) {
+          const sx = sweep + c;
+          const wx = ((sx % ECG_REGION.w) + ECG_REGION.w) % ECG_REGION.w;
+          const bufIdx = (off + Math.floor(sx)) % buf.length;
+          const val = buf[bufIdx < 0 ? buf.length + bufIdx : bufIdx] || 0;
+          const py = yCenter - val * (leadH * 0.4);
+          const px = ECG_REGION.x + wx;
+          if (!started) { ctx.moveTo(px, py); started = true; }
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+
+      // AO pressure wave
+      {
+        ctx.strokeStyle = "#ff2222";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        let started = false;
+        for (let c = -1; c <= cols; c++) {
+          const sx = sweep + c;
+          const wx = ((sx % AO_REGION.w) + AO_REGION.w) % AO_REGION.w;
+          const bufIdx = (off + Math.floor(sx)) % aoBuffer.length;
+          const val = aoBuffer[bufIdx < 0 ? aoBuffer.length + bufIdx : bufIdx] || 82;
+          // Map 0-200 to region bottom-top
+          const frac = val / 200;
+          const py = AO_REGION.y + AO_REGION.h - frac * AO_REGION.h;
+          const px = AO_REGION.x + wx;
+          if (!started) { ctx.moveTo(px, py); started = true; }
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+
+      // SpO2 pleth wave
+      {
+        ctx.strokeStyle = "#3cd7f9";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        let started = false;
+        for (let c = -1; c <= cols; c++) {
+          const sx = sweep + c;
+          const wx = ((sx % SPO2_REGION.w) + SPO2_REGION.w) % SPO2_REGION.w;
+          const bufIdx = (off + Math.floor(sx)) % spo2Buffer.length;
+          const val = spo2Buffer[bufIdx < 0 ? spo2Buffer.length + bufIdx : bufIdx] || 0;
+          const py = SPO2_REGION.y + SPO2_REGION.h / 2 - val * (SPO2_REGION.h * 0.45);
+          const px = SPO2_REGION.x + wx;
+          if (!started) { ctx.moveTo(px, py); started = true; }
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+
+      // --- Paint over DEMO MODE every frame ---
+      ctx.fillStyle = "#000";
+      ctx.fillRect(DEMO_MODE_RECT.x, DEMO_MODE_RECT.y, DEMO_MODE_RECT.w, DEMO_MODE_RECT.h);
+
+      // --- Paint over and redraw bottom vitals strip ---
+      ctx.fillStyle = "#000";
+      ctx.fillRect(VITALS_STRIP_RECT.x, VITALS_STRIP_RECT.y, VITALS_STRIP_RECT.w, VITALS_STRIP_RECT.h);
+      // Separator line at top of vitals strip
+      ctx.fillStyle = "#333";
+      ctx.fillRect(0, 1000, 1920, 1);
+
+      const v = vitalsRef.current;
+      const baseY = 1010; // top of label text
+      const numY = 1022;  // top of large numbers
+
+      // HR
+      ctx.fillStyle = "#00cc00";
+      ctx.font = "bold 20px sans-serif";
+      ctx.textBaseline = "top";
+      ctx.fillText("HR", 10, baseY);
+      ctx.font = "14px sans-serif";
+      ctx.fillText("II", 10, baseY + 48);
+      ctx.font = "bold 56px sans-serif";
+      ctx.fillText(String(v.hr), 50, numY);
+
+      // NBP
+      ctx.fillStyle = "#ff3333";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText("NBP", 145, baseY);
+      ctx.font = "bold 28px sans-serif";
+      ctx.fillText(`${v.sys}/${v.dia} (${v.mean})`, 145, numY + 12);
+      // Red bar indicator
+      ctx.fillRect(295, numY + 22, 40, 5);
+
+      // SpO2
+      ctx.fillStyle = "#3cd7f9";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText("SpO\u2082", 360, baseY);
+      ctx.font = "bold 56px sans-serif";
+      ctx.fillText(String(v.spo2), 430, numY);
+
+      // Pulse
+      ctx.fillStyle = "#3cd7f9";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText("Pulse", 530, baseY);
+      ctx.font = "bold 48px sans-serif";
+      ctx.fillText(String(v.pulse), 600, numY);
+
+      // RR
+      ctx.fillStyle = "#d5cfc4";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText("RR", 700, baseY);
+
+      // etCO2
+      ctx.fillStyle = "#cccc00";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText("etCO\u2082", 780, baseY);
+      ctx.font = "bold 60px sans-serif";
+      ctx.fillText(String(v.etco2), 860, numY - 4);
+
+      // Temp
+      ctx.fillStyle = "#d5cfc4";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText("Temp", 980, baseY);
+
+      // Advance sweep
+      sweepRef.current += SPEED;
+      offsetRef.current += SPEED;
+      if (sweepRef.current >= ECG_REGION.w) {
+        sweepRef.current -= ECG_REGION.w;
+      }
+      if (offsetRef.current > BUF_LEN - 5000) {
+        offsetRef.current = offsetRef.current % 3000;
       }
 
       animRef.current = requestAnimationFrame(draw);
     };
 
     animRef.current = requestAnimationFrame(draw);
-    return () => {
-      cancelAnimationFrame(animRef.current);
-      ro.disconnect();
-    };
-  }, [color, lineWidth, speed, getData, yMin, yMax]);
-
-  return <canvas ref={canvasRef} className="w-full h-full block" />;
-}
-
-// --- ECG lead row ---
-
-function EcgLeadRow({ label, isGreen, getData }: { label: string; isGreen?: boolean; getData: () => number[] }) {
-  return (
-    <div className="flex items-stretch flex-1 min-h-0 border-b border-[#1a1a1a]">
-      <div className="w-[36px] shrink-0 flex items-center justify-end pr-1">
-        {isGreen && <span className="w-[5px] h-[5px] rounded-full bg-[#00cc00] mr-1 shrink-0" />}
-        <span className={`text-[11px] font-bold ${isGreen ? "text-[#00cc00]" : "text-[#ccc]"}`}>{label}</span>
-      </div>
-      <div className="flex-1 relative min-w-0">
-        <WaveformCanvas color={isGreen ? "#00cc00" : "#cccccc"} lineWidth={1} speed={2} getData={getData} yMin={-0.6} yMax={1.0} />
-        <span className="absolute left-1 bottom-0 text-[8px] text-[#666]">1 mV</span>
-      </div>
-    </div>
-  );
-}
-
-// --- Main HemoDisplay ---
-
-export default function HemoDisplay() {
-  const [hr, setHr] = useState(80);
-  const [aoSys, setAoSys] = useState(124);
-  const [aoDia, setAoDia] = useState(84);
-  const [aoMean, setAoMean] = useState(99);
-  const [spo2, setSpo2] = useState(100);
-  const [rrVal, setRrVal] = useState(15);
-  const [elapsed, setElapsed] = useState(14 * 60 + 54);
-
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setHr((v) => Math.min(85, Math.max(75, v + Math.round((Math.random() - 0.5) * 2))));
-      setAoSys((v) => Math.min(130, Math.max(118, v + Math.round((Math.random() - 0.5) * 3))));
-      setAoDia((v) => Math.min(90, Math.max(78, v + Math.round((Math.random() - 0.5) * 2))));
-      setAoMean((v) => Math.min(105, Math.max(93, v + Math.round((Math.random() - 0.5) * 2))));
-      setSpo2((v) => Math.min(100, Math.max(98, v + Math.round((Math.random() - 0.5) * 1))));
-      setRrVal((v) => Math.min(18, Math.max(13, v + Math.round((Math.random() - 0.5) * 2))));
-      setElapsed((v) => v + 2);
-    }, 2000);
-    return () => clearInterval(iv);
+    return () => cancelAnimationFrame(animRef.current);
   }, []);
 
-  const fmtTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  };
-
-  const ecgII = useRef(() => generateEcgCycle(180)).current;
-  const ecgI = useRef(() => generateEcgLeadVariant(180, 0.7, false)).current;
-  const ecgIII = useRef(() => generateEcgLeadVariant(180, 0.5, false)).current;
-  const ecgAVR = useRef(() => generateEcgLeadVariant(180, 0.6, true)).current;
-  const ecgV1 = useRef(() => generateEcgLeadVariant(180, 0.55, false)).current;
-  const abpData = useRef(() => generateAbpCycle(140)).current;
-
   return (
-    <div className="w-full h-full bg-black flex flex-col overflow-hidden" style={{ fontFamily: "sans-serif" }}>
-      {/* Patient info bar */}
-      <div className="flex items-center h-[24px] bg-[#1a1a2a] border-b border-[#333] px-3 shrink-0">
-        <div className="flex items-center gap-4 flex-1">
-          <span className="text-[#aaa] text-[10px]">🖥 .</span>
-          <span className="text-[#888] text-[10px]">PID</span>
-          <span className="text-[#888] text-[10px]"><b className="text-[#ccc]">DOB</b> Unknown</span>
-          <span className="text-[#888] text-[10px]">Weight</span>
-        </div>
-      </div>
-
-      {/* Main area */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left: waveforms */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* AO pressure label */}
-          <div className="flex items-center px-3 py-1 shrink-0 h-[32px]">
-            <span className="text-[#ffcc00] text-[14px] font-bold">
-              <sup className="text-[9px]">1</sup> AO {aoSys}/{aoDia} <span className="text-[#999]">({aoMean})</span>
-            </span>
-          </div>
-
-          {/* ECG leads */}
-          <div className="flex flex-col flex-[1.1] min-h-0">
-            <EcgLeadRow label="I" getData={ecgI} />
-            <EcgLeadRow label="II" isGreen getData={ecgII} />
-            <EcgLeadRow label="III" getData={ecgIII} />
-            <EcgLeadRow label="aVR" getData={ecgAVR} />
-            <EcgLeadRow label="V1" getData={ecgV1} />
-          </div>
-
-          {/* Pressure waveform area */}
-          <div className="flex flex-1 min-h-0">
-            {/* Y-axis labels */}
-            <div className="w-[28px] shrink-0 flex flex-col justify-between py-1 items-end pr-1">
-              <span className="text-[10px] text-[#888]">200</span>
-              <span className="text-[10px] text-[#888]">100</span>
-              <span className="text-[10px] text-[#888]">0</span>
-            </div>
-            {/* Waveform */}
-            <div className="flex-1 relative min-w-0 border-l border-[#222]">
-              {/* Dashed grid lines */}
-              <div className="absolute inset-0 flex flex-col justify-between py-0 pointer-events-none">
-                <div className="border-b border-dashed border-[#333]" />
-                <div className="border-b border-dashed border-[#333]" />
-                <div className="border-b border-dashed border-[#333]" />
-                <div className="border-b border-dashed border-[#333]" />
-                <div />
-              </div>
-              <WaveformCanvas color="#ff2222" lineWidth={1.5} speed={2} getData={abpData} yMin={0} yMax={200} />
-              {/* X-axis ticks */}
-              <div className="absolute bottom-0 left-0 right-0 flex justify-between px-1">
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                  <span key={n} className="text-[8px] text-[#666]">{n === 0 ? "0s" : String(n)}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right info panel */}
-        <div className="w-[155px] bg-[#0d0d0d] border-l border-[#444] flex flex-col shrink-0">
-          <div className="bg-[#1a1a1a] px-2 py-1 border-b border-[#444]">
-            <span className="text-[#ccc] text-[11px] font-bold">AIR REST</span>
-          </div>
-          <div className="px-2 py-2 flex flex-col gap-1 text-[10px]">
-            <div className="flex justify-between">
-              <span className="text-[#888]">14:43:37</span>
-              <span className="text-[#ffcc00]">AO</span>
-              <span className="text-[#ccc]">124/84 (99)</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[#888]" />
-              <span className="text-[#ffcc00]">LV</span>
-              <span className="text-[#ccc]">156/5/15</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Status bar */}
-      <div className="flex items-center h-[22px] bg-[#111] border-t border-[#333] px-3 gap-4 shrink-0">
-        <div className="flex items-center gap-1">
-          <span className="w-[6px] h-[6px] rounded-full bg-red-600 animate-pulse" />
-          <span className="text-[9px] text-[#ccc] tabular-nums">{fmtTime(elapsed)}</span>
-        </div>
-        <span className="text-[9px] text-[#888]">Vitals Interval: 1:06 (2 min) ▾</span>
-        <span className="text-[9px] text-[#ccc] border border-[#555] px-2 py-px rounded-sm">STAT</span>
-        <span className="text-[9px] text-[#888] ml-auto">Sweep Speed: 25 mm/s ▾</span>
-      </div>
-
-      {/* Bottom vitals strip */}
-      <div className="flex items-end h-[40px] bg-black border-t border-[#333] px-2 gap-3 shrink-0">
-        {/* HR */}
-        <div className="flex items-baseline gap-1">
-          <span className="text-[10px] text-[#00cc00] font-bold leading-none">HR<br /><span className="text-[8px]">II</span></span>
-          <span className="text-[28px] text-[#00cc00] font-bold leading-none tabular-nums">{hr}</span>
-        </div>
-        {/* NBP */}
-        <div className="flex items-baseline gap-1">
-          <div className="flex flex-col">
-            <span className="text-[9px] text-[#ff3333] font-bold">NBP</span>
-            <span className="text-[11px] text-[#ff3333] tabular-nums">135/89 (105)</span>
-          </div>
-          <div className="w-[40px] h-[4px] bg-[#ff3333] rounded-full self-center" />
-        </div>
-        {/* SpO2 */}
-        <div className="flex items-baseline gap-1">
-          <div className="flex flex-col">
-            <span className="text-[9px] text-[#00ccff] font-bold">SpO₂</span>
-            <span className="text-[8px] text-[#00ccff]">Pulse<br />88</span>
-          </div>
-          <span className="text-[28px] text-[#00ccff] font-bold leading-none tabular-nums">{spo2}</span>
-        </div>
-        {/* RR */}
-        <div className="flex items-baseline gap-1">
-          <span className="text-[9px] text-[#cccc00] font-bold">RR</span>
-          <span className="text-[28px] text-[#cccc00] font-bold leading-none tabular-nums">{rrVal}</span>
-        </div>
-        {/* Tskin */}
-        <div className="flex items-baseline gap-1">
-          <span className="text-[9px] text-[#00ccff] font-bold">Tskin<br />°C</span>
-          <span className="text-[28px] text-[#00ccff] font-bold leading-none tabular-nums">36.8</span>
-        </div>
-        {/* etCO2 */}
-        <div className="flex items-baseline gap-1">
-          <span className="text-[9px] text-[#cccc00] font-bold">etCO₂</span>
-          <span className="text-[28px] text-[#cccc00] font-bold leading-none tabular-nums">30</span>
-        </div>
-      </div>
+    <div className="relative w-full h-full overflow-hidden bg-black">
+      {/* Background image with all static chrome */}
+      <img
+        src={BG_IMG}
+        alt=""
+        className="absolute inset-0 w-full h-full object-fill pointer-events-none"
+        draggable={false}
+      />
+      {/* Canvas overlay for animated waveforms */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full"
+        style={{ imageRendering: "auto" }}
+      />
     </div>
   );
 }
