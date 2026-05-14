@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import svgPaths from "./svg-bq94eoh0jd";
 import HemoDisplay from "../app/components/HemoDisplay";
+import FramePlayer from "../components/FramePlayer";
 import imgImage2 from "figma:asset/2a97af415690c33899ec327cbd66050b75adba61.png";
 import imgRectangle10 from "figma:asset/c9086bd51fc782e98eaacdee902113f255daaed2.png";
 import imgRectangle11 from "figma:asset/0aa26374bbdf16857809de604ec48e1e0389d7d8.png";
@@ -1202,15 +1203,16 @@ function Frame61() {
 const imgStudyStateIcon = new URL("../assets/ce32fd58653bb29169f77245470cd0ac20f243cb.svg", import.meta.url).href;
 
 function Column() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const freezeCanvasRef = useRef<HTMLCanvasElement>(null);
   const [phase, setPhase] = useState<string>("live");
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const [fluoroOn, setFluoroOn] = useState(false);
   const fluoroOnRef = useRef(fluoroOn);
   fluoroOnRef.current = fluoroOn;
-  const [freezeFrame, setFreezeFrame] = useState<string | null>(null);
+  const [sequence, setSequence] = useState<"postrecord" | "treatment">("postrecord");
+  const pendingSequence = useRef<"postrecord" | "treatment" | null>(null);
+  const [seekFrame, setSeekFrame] = useState<number | undefined>(undefined);
+  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
@@ -1235,25 +1237,10 @@ function Column() {
   }, []);
 
   useEffect(() => {
-    const vid = videoRef.current;
-    if (!vid) return;
-    if (fluoroOn) {
-      setFreezeFrame(null);
-      vid.playbackRate = phaseRef.current === "recording" ? 1.0 : 0.5;
-      vid.play();
-    } else {
-      // Capture the last frame before pausing
-      if (vid.videoWidth > 0 && vid.videoHeight > 0) {
-        const canvas = freezeCanvasRef.current || document.createElement("canvas");
-        canvas.width = vid.videoWidth;
-        canvas.height = vid.videoHeight;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(vid, 0, 0);
-          setFreezeFrame(canvas.toDataURL("image/png"));
-        }
-      }
-      vid.pause();
+    if (fluoroOn && pendingSequence.current) {
+      setSequence(pendingSequence.current);
+      setSeekFrame(0);
+      pendingSequence.current = null;
     }
   }, [fluoroOn]);
 
@@ -1262,23 +1249,20 @@ function Column() {
 
     if (e.data.type === "intrasight-phase") {
       setPhase(e.data.phase);
-      const vid = videoRef.current;
-      if (!vid) return;
-
-      if (e.data.phase === "recording") {
-        vid.currentTime = 0;
-        vid.playbackRate = 1.0;
-      } else if (e.data.phase === "live") {
-        vid.currentTime = 0;
-        vid.playbackRate = 0.5;
+      
+      if (e.data.phase === "recording" || e.data.phase === "live") {
+        setSeekFrame(0);
       }
     }
 
     if (e.data.type === "intrasight-recording-time" && phaseRef.current === "recording") {
-      const vid = videoRef.current;
-      if (vid && Math.abs(vid.currentTime - e.data.time) > 0.3) {
-        vid.currentTime = e.data.time;
-      }
+      // Convert time to frame number (30 fps)
+      const frameNum = Math.floor(e.data.time * 30);
+      setSeekFrame(frameNum);
+    }
+
+    if (e.data.type === "intrasight-segment-confirmed") {
+      pendingSequence.current = "treatment";
     }
   }, []);
 
@@ -1288,7 +1272,7 @@ function Column() {
   }, [handleMessage]);
 
   return (
-    <div className="bg-black content-stretch flex flex-col h-[1650px] relative shrink-0 w-[1530px] overflow-hidden border-2 border-[#3b3b3b]" data-name="Column">
+    <div className="bg-black content-stretch flex flex-col h-full relative shrink-0 w-full overflow-hidden border-2 border-[#3b3b3b]" data-name="Column">
       {/* Patient bar */}
       <div className="bg-[#171717] content-stretch flex gap-[20px] h-[40px] items-center px-[24px] py-[2px] shrink-0 w-full">
         <p className="font-['CentraleSans:Medium',sans-serif] leading-[20px] not-italic text-[#41c9fe] text-[20px] whitespace-nowrap shrink-0">LIVE</p>
@@ -1307,23 +1291,16 @@ function Column() {
           <p className="leading-[24px]">12-Apr-1949 (74y)</p>
         </div>
       </div>
-      {/* Video + freeze frame overlay */}
+      {/* Frame player */}
       <div className="relative flex-1 min-h-0 w-full">
-        <video
-          ref={videoRef}
-          src="/Postrecord.mov"
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
+        <FramePlayer
+          sequence={sequence}
+          isPlaying={fluoroOn}
+          playbackRate={phaseRef.current === "recording" ? 1.0 : 0.5}
+          className="absolute inset-0 w-full h-full"
+          seekToFrame={seekFrame}
+          onTimeUpdate={(frameIndex) => setCurrentFrameIndex(frameIndex)}
         />
-        {freezeFrame && !fluoroOn && (
-          <img
-            alt=""
-            src={freezeFrame}
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          />
-        )}
-        <canvas ref={freezeCanvasRef} className="hidden" />
       </div>
       {fluoroOn && (
         <img
@@ -1339,33 +1316,30 @@ function Column() {
 }
 
 function Column1() {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [phase, setPhase] = useState<string>("live");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [seekFrame, setSeekFrame] = useState<number | undefined>(undefined);
 
   const handleMessage = useCallback((e: MessageEvent) => {
     if (!e.data || typeof e.data.type !== "string") return;
 
     if (e.data.type === "intrasight-phase") {
       setPhase(e.data.phase);
-      const vid = videoRef.current;
-      if (!vid) return;
 
       if (e.data.phase === "recording") {
-        vid.currentTime = 0;
-        vid.play();
-      } else if (e.data.phase === "analysis") {
-        vid.pause();
-      } else if (e.data.phase === "live") {
-        vid.pause();
-        vid.currentTime = 0;
+        setSeekFrame(0);
+        setIsPlaying(true);
+      } else if (e.data.phase === "analysis" || e.data.phase === "live") {
+        setIsPlaying(false);
+        if (e.data.phase === "live") {
+          setSeekFrame(0);
+        }
       }
     }
 
     if (e.data.type === "intrasight-recording-time" && phase === "recording") {
-      const vid = videoRef.current;
-      if (vid && Math.abs(vid.currentTime - e.data.time) > 0.3) {
-        vid.currentTime = e.data.time;
-      }
+      const frameNum = Math.floor(e.data.time * 30);
+      setSeekFrame(frameNum);
     }
   }, [phase]);
 
@@ -1375,10 +1349,10 @@ function Column1() {
   }, [handleMessage]);
 
   return (
-    <div className="bg-black content-stretch flex flex-col h-[646px] relative shrink-0 w-[569px] overflow-hidden border border-[#3b3b3b]" data-name="Column">
+    <div className="bg-black content-stretch flex flex-col h-full relative shrink-0 w-full overflow-hidden border border-[#3b3b3b]" data-name="Column">
       {/* Patient bar */}
       <div className="bg-[#171717] content-stretch flex gap-[8px] h-[20px] items-center px-[10px] py-[1px] shrink-0 w-full">
-        <p className="font-['CentraleSans:Medium',sans-serif] leading-[10px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">LIVE</p>
+        <p className="font-['CentraleSans:Medium',sans-serif] leading-[10px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">REF</p>
         <div className="flex gap-[4px] items-center overflow-clip shrink-0">
           <img alt="" className="w-[11px] h-[8px] shrink-0" src={imgStudyStateIcon} />
           <p className="font-['CentraleSans:Book',sans-serif] leading-[14px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">DOE, Jane</p>
@@ -1392,13 +1366,12 @@ function Column1() {
           <p className="leading-[10px]">12-Apr-1949 (74y)</p>
         </div>
       </div>
-      {/* Video */}
-      <video
-        ref={videoRef}
-        src="/Postrecord.mov"
-        muted
-        playsInline
-        className="w-full flex-1 min-h-0 object-cover"
+      {/* Frame player */}
+      <FramePlayer
+        sequence="postrecord"
+        isPlaying={isPlaying}
+        className="w-full flex-1 min-h-0"
+        seekToFrame={seekFrame}
       />
     </div>
   );
@@ -1406,7 +1379,7 @@ function Column1() {
 
 function Frame62() {
   return (
-    <div className="flex-[1_0_0] h-[945px] min-h-px min-w-px relative overflow-hidden">
+    <div className="w-full h-full relative overflow-hidden">
       <HemoDisplay />
     </div>
   );
@@ -1421,11 +1394,13 @@ function Frame63() {
   );
 }
 
+const intrasightUrl = import.meta.env.DEV ? "http://localhost:3000" : "/intrasight/";
+
 function Boom() {
   return (
-    <div className="bg-black content-stretch flex h-[1080px] items-center justify-center overflow-clip relative shrink-0 w-full" data-name="Boom">
+    <div className="bg-black content-stretch flex h-full items-center justify-center overflow-clip relative shrink-0 w-full" data-name="Boom">
       <iframe
-        src="http://localhost:5174"
+        src={intrasightUrl}
         title="Intrasight"
         className="w-full h-full border-none"
         style={{ overflow: "hidden" }}
@@ -1467,11 +1442,67 @@ function Frame60() {
   );
 }
 
-function Frame59() {
+function QuadrantWrapper({ children, aspectRatio }: { children: ReactNode; aspectRatio: number }) {
+  // Quadrant size: 1764x1052
+  const quadrantW = 1764;
+  const quadrantH = 1052;
+  const quadrantAspect = quadrantW / quadrantH; // ~1.677
+
+  // Calculate scaled dimensions to fit while maintaining aspect ratio
+  let contentW, contentH;
+  if (aspectRatio > quadrantAspect) {
+    // Content is wider - fit to width
+    contentW = quadrantW;
+    contentH = quadrantW / aspectRatio;
+  } else {
+    // Content is taller - fit to height
+    contentH = quadrantH;
+    contentW = quadrantH * aspectRatio;
+  }
+
   return (
-    <div className="absolute content-stretch flex flex-col items-start left-0 top-0 w-[3840px]">
+    <div className="relative flex items-center justify-center" style={{ width: `${quadrantW}px`, height: `${quadrantH}px` }}>
+      <div style={{ width: `${contentW}px`, height: `${contentH}px` }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function NewGridLayout() {
+  return (
+    <div className="absolute left-0 top-0 w-[3840px] h-[2152px] bg-black">
+      {/* Top Bar */}
       <Group7 />
-      <Frame60 />
+      
+      {/* Content area with sidebar + grid */}
+      <div className="absolute top-[48px] left-0 flex gap-[4px]">
+        {/* Sidebar */}
+        <Frame61 />
+        
+        {/* 2x2 Grid - each quadrant is 1764x1052 */}
+        <div className="grid grid-cols-2 grid-rows-2 gap-0">
+          {/* Top-left: X-ray Live */}
+          <QuadrantWrapper aspectRatio={1530 / 1650}>
+            <Column />
+          </QuadrantWrapper>
+
+          {/* Top-right: Intrasight */}
+          <QuadrantWrapper aspectRatio={1920 / 1080}>
+            <Boom />
+          </QuadrantWrapper>
+
+          {/* Bottom-left: X-ray Ref */}
+          <QuadrantWrapper aspectRatio={569 / 646}>
+            <Column1 />
+          </QuadrantWrapper>
+
+          {/* Bottom-right: Hemo */}
+          <QuadrantWrapper aspectRatio={1920 / 1080}>
+            <Frame62 />
+          </QuadrantWrapper>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1479,7 +1510,7 @@ function Frame59() {
 export default function FlexVisionSmartSizeOn() {
   return (
     <div className="bg-black relative size-full" data-name="FlexVision - SmartSize on">
-      <Frame59 />
+      <NewGridLayout />
     </div>
   );
 }

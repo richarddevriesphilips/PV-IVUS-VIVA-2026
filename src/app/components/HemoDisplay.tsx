@@ -181,6 +181,7 @@ export default function HemoDisplay() {
         ctx.lineJoin = "round";
         ctx.beginPath();
         let started = false;
+        let prevWx = -1;
         for (let c = -1; c <= cols; c++) {
           const sx = sweep + c;
           const wx = ((sx % ECG_REGION.w) + ECG_REGION.w) % ECG_REGION.w;
@@ -188,8 +189,18 @@ export default function HemoDisplay() {
           const val = buf[bufIdx < 0 ? buf.length + bufIdx : bufIdx] || 0;
           const py = yCenter - val * (leadH * 0.4);
           const px = ECG_REGION.x + wx;
-          if (!started) { ctx.moveTo(px, py); started = true; }
-          else ctx.lineTo(px, py);
+          // Detect wrap-around: if wx jumps backward significantly, start new path
+          if (prevWx !== -1 && Math.abs(wx - prevWx) > ECG_REGION.w / 2) {
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+          } else if (!started) {
+            ctx.moveTo(px, py);
+            started = true;
+          } else {
+            ctx.lineTo(px, py);
+          }
+          prevWx = wx;
         }
         ctx.stroke();
       }
@@ -200,6 +211,7 @@ export default function HemoDisplay() {
         ctx.lineWidth = 2;
         ctx.beginPath();
         let started = false;
+        let prevWx = -1;
         for (let c = -1; c <= cols; c++) {
           const sx = sweep + c;
           const wx = ((sx % AO_REGION.w) + AO_REGION.w) % AO_REGION.w;
@@ -209,8 +221,18 @@ export default function HemoDisplay() {
           const frac = val / 200;
           const py = AO_REGION.y + AO_REGION.h - frac * AO_REGION.h;
           const px = AO_REGION.x + wx;
-          if (!started) { ctx.moveTo(px, py); started = true; }
-          else ctx.lineTo(px, py);
+          // Detect wrap-around: if wx jumps backward significantly, start new path
+          if (prevWx !== -1 && Math.abs(wx - prevWx) > AO_REGION.w / 2) {
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+          } else if (!started) {
+            ctx.moveTo(px, py);
+            started = true;
+          } else {
+            ctx.lineTo(px, py);
+          }
+          prevWx = wx;
         }
         ctx.stroke();
       }
@@ -221,6 +243,7 @@ export default function HemoDisplay() {
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         let started = false;
+        let prevWx = -1;
         for (let c = -1; c <= cols; c++) {
           const sx = sweep + c;
           const wx = ((sx % SPO2_REGION.w) + SPO2_REGION.w) % SPO2_REGION.w;
@@ -228,8 +251,18 @@ export default function HemoDisplay() {
           const val = spo2Buffer[bufIdx < 0 ? spo2Buffer.length + bufIdx : bufIdx] || 0;
           const py = SPO2_REGION.y + SPO2_REGION.h / 2 - val * (SPO2_REGION.h * 0.45);
           const px = SPO2_REGION.x + wx;
-          if (!started) { ctx.moveTo(px, py); started = true; }
-          else ctx.lineTo(px, py);
+          // Detect wrap-around: if wx jumps backward significantly, start new path
+          if (prevWx !== -1 && Math.abs(wx - prevWx) > SPO2_REGION.w / 2) {
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+          } else if (!started) {
+            ctx.moveTo(px, py);
+            started = true;
+          } else {
+            ctx.lineTo(px, py);
+          }
+          prevWx = wx;
         }
         ctx.stroke();
       }
