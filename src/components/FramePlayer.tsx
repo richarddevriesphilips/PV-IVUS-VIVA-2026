@@ -72,7 +72,7 @@ export default function FramePlayer({
     }
   }, [currentFrame, totalFrames, onTimeUpdate]);
 
-  const framePath = `/frames/${sequence}/frame_${String(currentFrame + 1).padStart(4, "0")}.png`;
+  const framePath = `/frames/${sequence}/frame_${String(currentFrame + 1).padStart(4, "0")}.jpg`;
 
   return (
     <img
