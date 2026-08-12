@@ -3,4 +3,5 @@ treatment_cut.avi
 public/frames
 release
 release/*
+dist
 .DS_Store
