@@ -4,4 +4,5 @@ public/frames
 release
 release/*
 dist
+intrasight/build
 .DS_Store

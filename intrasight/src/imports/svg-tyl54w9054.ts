@@ -1,0 +1,3 @@
+export default {
+p376b1100: "M14 12L4 20V4L14 12ZM20 4H16V20H20V4Z",
+}
