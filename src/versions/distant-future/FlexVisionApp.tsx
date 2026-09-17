@@ -39,7 +39,7 @@ function Wordmark() {
 function SolutionName() {
   return (
     <div className="content-stretch flex items-center px-[8px] relative shrink-0" data-name="solution name">
-      <p className="font-['CentraleSans:Medium',sans-serif] leading-[28px] not-italic relative shrink-0 text-[20px] text-[rgba(255,255,255,0.8)] whitespace-nowrap">Azurion</p>
+      <p className="font-centrale-sans-medium leading-[28px] not-italic relative shrink-0 text-[20px] text-[rgba(255,255,255,0.8)] whitespace-nowrap">Azurion</p>
     </div>
   );
 }
@@ -64,7 +64,7 @@ function Left() {
 function Time() {
   return (
     <div className="content-stretch flex gap-[4px] items-center relative shrink-0" data-name="Time">
-      <div className="flex flex-col font-['CentraleSansDS:Book',sans-serif] justify-center leading-[0] not-italic relative shrink-0 text-[#d6d6d6] text-[20px] whitespace-nowrap">
+      <div className="flex flex-col font-centrale-sans-ds-book justify-center leading-[0] not-italic relative shrink-0 text-[#d6d6d6] text-[20px] whitespace-nowrap">
         <p className="leading-[28px]">{` `}</p>
       </div>
     </div>
@@ -74,7 +74,7 @@ function Time() {
 function DateTimeUser() {
   return (
     <div className="content-stretch flex gap-[20px] items-center justify-end relative shrink-0" data-name="Date + Time + User">
-      <div className="flex flex-col font-['CentraleSans:Book',sans-serif] justify-center leading-[0] not-italic relative shrink-0 text-[#d6d6d6] text-[20px] whitespace-nowrap">
+      <div className="flex flex-col font-centrale-sans-book justify-center leading-[0] not-italic relative shrink-0 text-[#d6d6d6] text-[20px] whitespace-nowrap">
         <p className="leading-[28px]">31-Jan-2024</p>
       </div>
       <Time />
@@ -171,8 +171,8 @@ function Group2() {
           <TopRow />
         </div>
       </div>
-      <p className="col-1 font-['CentraleSans:Book',sans-serif] leading-[20px] ml-[368px] mt-[18px] not-italic relative row-1 text-[#d6d6d6] text-[20px] text-center whitespace-nowrap">Applications</p>
-      <p className="col-1 font-['CentraleSans:Book',sans-serif] leading-[20px] ml-[574px] mt-[18px] not-italic relative row-1 text-[#d6d6d6] text-[20px] text-center whitespace-nowrap">Presets</p>
+      <p className="col-1 font-centrale-sans-book leading-[20px] ml-[368px] mt-[18px] not-italic relative row-1 text-[#d6d6d6] text-[20px] text-center whitespace-nowrap">Applications</p>
+      <p className="col-1 font-centrale-sans-book leading-[20px] ml-[574px] mt-[18px] not-italic relative row-1 text-[#d6d6d6] text-[20px] text-center whitespace-nowrap">Presets</p>
       <DDlsFv />
       <Apps />
     </div>
@@ -283,7 +283,7 @@ function SystemState() {
 
 function Frame1() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">44</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">KV</p>
     </div>
@@ -292,7 +292,7 @@ function Frame1() {
 
 function Frame4() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">59</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">mA</p>
     </div>
@@ -301,7 +301,7 @@ function Frame4() {
 
 function Frame5() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">3</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">ms</p>
     </div>
@@ -392,7 +392,7 @@ function ForPpt() {
   return (
     <div className="content-stretch flex gap-[80px] items-end pl-[60px] relative shrink-0" data-name="for-ppt">
       <CorFvViewingOverview />
-      <p className="font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap">11:14 AM</p>
+      <p className="font-centrale-sans-cnd-medium leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap">11:14 AM</p>
     </div>
   );
 }
@@ -423,7 +423,7 @@ function Frame8() {
 function Frame6() {
   return (
     <div className="content-stretch flex flex-col items-center justify-center pl-[20px] pr-[10px] py-[10px] relative shrink-0">
-      <p className="font-['CentraleSansCnd:Medium','Noto_Sans:Medium',sans-serif] leading-[34px] relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
+      <p className="font-centrale-sans-cnd-medium-noto leading-[34px] relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
         0ᵒ
       </p>
     </div>
@@ -452,7 +452,7 @@ function Frame11() {
 function Frame12() {
   return (
     <div className="content-stretch flex flex-col items-center justify-center pl-[20px] pr-[10px] py-[10px] relative shrink-0">
-      <p className="font-['CentraleSansCnd:Medium','Noto_Sans:Medium',sans-serif] leading-[34px] relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
+      <p className="font-centrale-sans-cnd-medium-noto leading-[34px] relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
         0ᵒ
       </p>
     </div>
@@ -481,7 +481,7 @@ function Frame14() {
 function Frame15() {
   return (
     <div className="content-stretch flex flex-col items-center justify-center pl-[20px] pr-[10px] py-[10px] relative shrink-0">
-      <p className="font-['CentraleSansCnd:Medium','Noto_Sans:Medium',sans-serif] leading-[34px] relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
+      <p className="font-centrale-sans-cnd-medium-noto leading-[34px] relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
         0ᵒ
       </p>
     </div>
@@ -524,7 +524,7 @@ function Section2() {
 
 function Frame18() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">117</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">cm</p>
     </div>
@@ -533,7 +533,7 @@ function Frame18() {
 
 function Frame19() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">11.6</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">inch</p>
     </div>
@@ -544,13 +544,13 @@ function Frame17() {
   return (
     <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0">
       <div className="h-[59px] relative shrink-0 w-[283px]" data-name="Positions">
-        <p className="absolute font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] left-0 not-italic text-[#696969] text-[30px] top-0 whitespace-nowrap">SID</p>
+        <p className="absolute font-centrale-sans-cnd-medium leading-[34px] left-0 not-italic text-[#696969] text-[30px] top-0 whitespace-nowrap">SID</p>
         <div className="absolute h-[59px] right-0 top-0 w-[38px]" data-name="Value and Unit">
           <Frame18 />
         </div>
       </div>
       <div className="h-[59px] relative shrink-0 w-[283px]" data-name="Positions">
-        <p className="absolute font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] left-0 not-italic text-[#696969] text-[30px] top-0 whitespace-nowrap">FD</p>
+        <p className="absolute font-centrale-sans-cnd-medium leading-[34px] left-0 not-italic text-[#696969] text-[30px] top-0 whitespace-nowrap">FD</p>
         <div className="absolute h-[59px] right-0 top-0 w-[38px]" data-name="Value and Unit">
           <Frame19 />
         </div>
@@ -563,14 +563,14 @@ function Frame16() {
   return (
     <div className="content-stretch flex flex-col gap-[28px] items-start relative shrink-0">
       <div className="content-stretch flex items-start justify-between leading-[34px] relative shrink-0 w-[288px] whitespace-nowrap" data-name="Positions">
-        <p className="font-['CentraleSansCnd:Medium',sans-serif] not-italic relative shrink-0 text-[#696969] text-[30px]">LAO</p>
-        <p className="font-['CentraleSansCnd:Medium','Noto_Sans:Medium',sans-serif] relative shrink-0 text-[#b0b0b0] text-[34px] text-right" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
+        <p className="font-centrale-sans-cnd-medium not-italic relative shrink-0 text-[#696969] text-[30px]">LAO</p>
+        <p className="font-centrale-sans-cnd-medium-noto relative shrink-0 text-[#b0b0b0] text-[34px] text-right" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
           0ᵒ
         </p>
       </div>
       <div className="content-stretch flex items-start justify-between leading-[34px] relative shrink-0 w-[288px] whitespace-nowrap" data-name="Positions">
-        <p className="font-['CentraleSansCnd:Medium',sans-serif] not-italic relative shrink-0 text-[#696969] text-[30px]">CRAN</p>
-        <p className="font-['CentraleSansCnd:Medium','Noto_Sans:Medium',sans-serif] relative shrink-0 text-[#b0b0b0] text-[34px] text-right" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
+        <p className="font-centrale-sans-cnd-medium not-italic relative shrink-0 text-[#696969] text-[30px]">CRAN</p>
+        <p className="font-centrale-sans-cnd-medium-noto relative shrink-0 text-[#b0b0b0] text-[34px] text-right" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
           0ᵒ
         </p>
       </div>
@@ -600,7 +600,7 @@ function Frame23() {
 
 function Frame25() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">-9</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">cm</p>
     </div>
@@ -638,7 +638,7 @@ function Frame27() {
 
 function Frame29() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">-53</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">cm</p>
     </div>
@@ -676,7 +676,7 @@ function Frame31() {
 
 function Frame33() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">13</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">cm</p>
     </div>
@@ -730,14 +730,14 @@ function Section3() {
 function LeftCoronary() {
   return (
     <div className="content-stretch flex items-center justify-center pl-[5px] relative shrink-0" data-name="Left Coronary">
-      <p className="font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">Left Coronary</p>
+      <p className="font-centrale-sans-cnd-medium leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">Left Coronary</p>
     </div>
   );
 }
 
 function Frame37() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">15</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">fps</p>
     </div>
@@ -759,7 +759,7 @@ function Frame36() {
         <div className="relative shrink-0 size-[40px]">
           <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src={imgRectangle16} />
         </div>
-        <p className="font-['CentraleSansCnd:Medium','Noto_Sans:Medium',sans-serif] leading-[34px] relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
+        <p className="font-centrale-sans-cnd-medium-noto leading-[34px] relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap" style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100, 'wght' 500" }}>
           Low
         </p>
       </div>
@@ -788,14 +788,14 @@ function Frame34() {
 function LeftCoronary1() {
   return (
     <div className="bg-[#191919] content-stretch flex items-center pl-[5px] relative shrink-0 w-[288px]" data-name="Left Coronary">
-      <p className="font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">Left Coronary</p>
+      <p className="font-centrale-sans-cnd-medium leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">Left Coronary</p>
     </div>
   );
 }
 
 function Frame41() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">119</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">min</p>
     </div>
@@ -805,7 +805,7 @@ function Frame41() {
 function Group() {
   return (
     <div className="col-1 grid-cols-[max-content] grid-rows-[max-content] inline-grid ml-0 mt-0 place-items-start relative row-1">
-      <p className="col-1 font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] ml-0 mt-0 not-italic relative row-1 text-[#b0b0b0] text-[30px] text-right whitespace-nowrap">K</p>
+      <p className="col-1 font-centrale-sans-cnd-medium leading-[34px] ml-0 mt-0 not-italic relative row-1 text-[#b0b0b0] text-[30px] text-right whitespace-nowrap">K</p>
     </div>
   );
 }
@@ -823,7 +823,7 @@ function Group1() {
 
 function Frame42() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">00</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">mm</p>
     </div>
@@ -871,14 +871,14 @@ function Frame38() {
 function LeftCoronary2() {
   return (
     <div className="bg-[#191919] content-stretch flex items-center pl-[5px] relative shrink-0 w-[288px]" data-name="Left Coronary">
-      <p className="font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">K Rate</p>
+      <p className="font-centrale-sans-cnd-medium leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">K Rate</p>
     </div>
   );
 }
 
 function Frame46() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">119</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">min</p>
     </div>
@@ -920,14 +920,14 @@ function Frame43() {
 function LeftCoronary3() {
   return (
     <div className="bg-[#191919] content-stretch flex items-center pl-[5px] relative shrink-0 w-[288px]" data-name="Left Coronary">
-      <p className="font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">Fluoroscopy Time</p>
+      <p className="font-centrale-sans-cnd-medium leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">Fluoroscopy Time</p>
     </div>
   );
 }
 
 function Frame50() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">0.0</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">min</p>
     </div>
@@ -969,14 +969,14 @@ function Frame47() {
 function LeftCoronary4() {
   return (
     <div className="bg-[#191919] content-stretch flex items-center pl-[5px] relative shrink-0 w-[288px]" data-name="Left Coronary">
-      <p className="font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">Total K</p>
+      <p className="font-centrale-sans-cnd-medium leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[30px] whitespace-nowrap">Total K</p>
     </div>
   );
 }
 
 function Frame54() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">2.80</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">min</p>
     </div>
@@ -985,7 +985,7 @@ function Frame54() {
 
 function Frame55() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">0.591</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">Gy-cm²</p>
     </div>
@@ -994,7 +994,7 @@ function Frame55() {
 
 function Frame56() {
   return (
-    <div className="absolute content-stretch flex flex-col font-['CentraleSansCnd:Medium',sans-serif] items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
+    <div className="absolute content-stretch flex flex-col font-centrale-sans-cnd-medium items-end leading-[34px] not-italic pb-[9px] right-[-2px] text-right top-0 whitespace-nowrap">
       <p className="relative shrink-0 text-[#b0b0b0] text-[34px]">0.0</p>
       <p className="relative shrink-0 text-[#696969] text-[20px]">mm</p>
     </div>
@@ -1013,13 +1013,13 @@ function Frame53() {
         </div>
       </div>
       <div className="h-[59px] relative shrink-0 w-[283px]" data-name="Positions">
-        <p className="absolute font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] left-0 not-italic text-[#696969] text-[30px] top-0 whitespace-nowrap">DAP</p>
+        <p className="absolute font-centrale-sans-cnd-medium leading-[34px] left-0 not-italic text-[#696969] text-[30px] top-0 whitespace-nowrap">DAP</p>
         <div className="absolute h-[59px] right-0 top-0 w-[38px]" data-name="Value and Unit">
           <Frame55 />
         </div>
       </div>
       <div className="h-[59px] relative shrink-0 w-[283px]" data-name="Positions">
-        <p className="absolute font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] left-0 not-italic text-[#696969] text-[30px] top-0 whitespace-nowrap">Total Fluoro</p>
+        <p className="absolute font-centrale-sans-cnd-medium leading-[34px] left-0 not-italic text-[#696969] text-[30px] top-0 whitespace-nowrap">Total Fluoro</p>
         <div className="absolute h-[59px] right-0 top-0 w-[38px]" data-name="Value and Unit">
           <Frame56 />
         </div>
@@ -1097,7 +1097,7 @@ function SmartMask() {
 function Group3() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
-      <p className="col-1 font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] ml-[44px] mt-0 not-italic relative row-1 text-[20px] text-center text-white whitespace-nowrap">A</p>
+      <p className="col-1 font-centrale-sans-cnd-medium leading-[34px] ml-[44px] mt-0 not-italic relative row-1 text-[20px] text-center text-white whitespace-nowrap">A</p>
       <SmartMask />
     </div>
   );
@@ -1106,7 +1106,7 @@ function Group3() {
 function Group4() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
-      <p className="bg-clip-text col-1 font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] ml-[41px] mt-0 not-italic relative row-1 text-[20px] text-[transparent] text-center whitespace-nowrap" style={{ backgroundImage: "linear-gradient(76.0028deg, rgb(65, 201, 254) 28.971%, rgb(43, 135, 170) 73.962%)" }}>
+      <p className="bg-clip-text col-1 font-centrale-sans-cnd-medium leading-[34px] ml-[41px] mt-0 not-italic relative row-1 text-[20px] text-[transparent] text-center whitespace-nowrap" style={{ backgroundImage: "linear-gradient(76.0028deg, rgb(65, 201, 254) 28.971%, rgb(43, 135, 170) 73.962%)" }}>
         A
       </p>
       <div className="col-1 ml-0 mt-[21px] overflow-clip relative row-1 size-[48px]" data-name="CropSquare">
@@ -1163,7 +1163,7 @@ function VesselNavigatorPlanning() {
 function Group5() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
-      <p className="bg-clip-text col-1 font-['CentraleSansCnd:Medium',sans-serif] leading-[34px] ml-[43px] mt-0 not-italic relative row-1 text-[20px] text-[transparent] text-center whitespace-nowrap" style={{ backgroundImage: "linear-gradient(76.0028deg, rgb(65, 201, 254) 28.971%, rgb(43, 135, 170) 73.962%)" }}>
+      <p className="bg-clip-text col-1 font-centrale-sans-cnd-medium leading-[34px] ml-[43px] mt-0 not-italic relative row-1 text-[20px] text-[transparent] text-center whitespace-nowrap" style={{ backgroundImage: "linear-gradient(76.0028deg, rgb(65, 201, 254) 28.971%, rgb(43, 135, 170) 73.962%)" }}>
         A
       </p>
       <VesselNavigatorPlanning />
@@ -1274,18 +1274,18 @@ function Column() {
     <div className="bg-black content-stretch flex flex-col h-full relative shrink-0 w-full overflow-hidden border-2 border-[#3b3b3b]" data-name="Column">
       {/* Patient bar */}
       <div className="bg-[#171717] content-stretch flex gap-[20px] h-[40px] items-center px-[24px] py-[2px] shrink-0 w-full">
-        <p className="font-['CentraleSans:Medium',sans-serif] leading-[20px] not-italic text-[#41c9fe] text-[20px] whitespace-nowrap shrink-0">LIVE</p>
+        <p className="font-centrale-sans-medium leading-[20px] not-italic text-[#41c9fe] text-[20px] whitespace-nowrap shrink-0">LIVE</p>
         <div className="flex gap-[12px] items-center overflow-clip shrink-0">
           <div className="relative shrink-0 w-[32px] h-[32px] flex items-center justify-center">
             <img alt="" className="w-[28px] h-[20px]" src={imgStudyStateIcon} />
           </div>
-          <p className="font-['CentraleSans:Book',sans-serif] leading-[36px] not-italic text-[#41c9fe] text-[20px] whitespace-nowrap shrink-0">DOE, Jane</p>
+          <p className="font-centrale-sans-book leading-[36px] not-italic text-[#41c9fe] text-[20px] whitespace-nowrap shrink-0">DOE, Jane</p>
         </div>
-        <div className="flex font-['CentraleSans:Book',sans-serif] gap-[8px] items-center not-italic text-[#d6d6d6] text-[20px] whitespace-nowrap shrink-0">
+        <div className="flex font-centrale-sans-book gap-[8px] items-center not-italic text-[#d6d6d6] text-[20px] whitespace-nowrap shrink-0">
           <p className="leading-[24px] opacity-50">Patient ID</p>
           <p className="leading-[24px]">2345412</p>
         </div>
-        <div className="flex font-['CentraleSans:Book',sans-serif] gap-[8px] items-center not-italic text-[#d6d6d6] text-[20px] shrink-0">
+        <div className="flex font-centrale-sans-book gap-[8px] items-center not-italic text-[#d6d6d6] text-[20px] shrink-0">
           <p className="leading-[24px] opacity-50">DOB</p>
           <p className="leading-[24px]">12-Apr-1949 (74y)</p>
         </div>
@@ -1351,16 +1351,16 @@ function Column1() {
     <div className="bg-black content-stretch flex flex-col h-full relative shrink-0 w-full overflow-hidden border border-[#3b3b3b]" data-name="Column">
       {/* Patient bar */}
       <div className="bg-[#171717] content-stretch flex gap-[8px] h-[20px] items-center px-[10px] py-[1px] shrink-0 w-full">
-        <p className="font-['CentraleSans:Medium',sans-serif] leading-[10px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">REF</p>
+        <p className="font-centrale-sans-medium leading-[10px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">REF</p>
         <div className="flex gap-[4px] items-center overflow-clip shrink-0">
           <img alt="" className="w-[11px] h-[8px] shrink-0" src={imgStudyStateIcon} />
-          <p className="font-['CentraleSans:Book',sans-serif] leading-[14px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">DOE, Jane</p>
+          <p className="font-centrale-sans-book leading-[14px] not-italic text-[#41c9fe] text-[8px] whitespace-nowrap shrink-0">DOE, Jane</p>
         </div>
-        <div className="flex font-['CentraleSans:Book',sans-serif] gap-[3px] items-center not-italic text-[#d6d6d6] text-[8px] whitespace-nowrap shrink-0">
+        <div className="flex font-centrale-sans-book gap-[3px] items-center not-italic text-[#d6d6d6] text-[8px] whitespace-nowrap shrink-0">
           <p className="leading-[10px] opacity-50">Patient ID</p>
           <p className="leading-[10px]">2345412</p>
         </div>
-        <div className="flex font-['CentraleSans:Book',sans-serif] gap-[3px] items-center not-italic text-[#d6d6d6] text-[8px] shrink-0">
+        <div className="flex font-centrale-sans-book gap-[3px] items-center not-italic text-[#d6d6d6] text-[8px] shrink-0">
           <p className="leading-[10px] opacity-50">DOB</p>
           <p className="leading-[10px]">12-Apr-1949 (74y)</p>
         </div>
@@ -1376,7 +1376,7 @@ function Column1() {
   );
 }
 
-const intrasightUrl = import.meta.env.DEV ? "http://localhost:3000" : "/intrasight/";
+const intrasightUrl = import.meta.env.DEV ? "http://localhost:3001" : "/intrasight-distant-future/";
 
 function Boom() {
   return (

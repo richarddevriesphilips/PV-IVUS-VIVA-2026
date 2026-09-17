@@ -37,3 +37,33 @@
   font-style: normal;
   font-display: swap;
 }
+
+/*
+ * Hand-written font-family utilities.
+ *
+ * These font names contain colons (e.g. "CentraleSans:Book"), which Tailwind's
+ * arbitrary-value engine mishandles: it escapes the colon inside the generated
+ * `font-family` declaration itself (e.g. `font-family:CentraleSans\:Book,sans-serif`)
+ * instead of keeping the name quoted. That can make the font fail to resolve to
+ * the @font-face above and silently fall back to the browser default font.
+ * Defining the rules explicitly here avoids that escaping bug entirely.
+ */
+.font-centrale-sans-medium {
+  font-family: "CentraleSans:Medium", sans-serif;
+}
+
+.font-centrale-sans-book {
+  font-family: "CentraleSans:Book", sans-serif;
+}
+
+.font-centrale-sans-cnd-medium {
+  font-family: "CentraleSansCnd:Medium", sans-serif;
+}
+
+.font-centrale-sans-ds-book {
+  font-family: "CentraleSansDS:Book", sans-serif;
+}
+
+.font-centrale-sans-cnd-medium-noto {
+  font-family: "CentraleSansCnd:Medium", "Noto_Sans:Medium", sans-serif;
+}

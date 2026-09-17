@@ -5,7 +5,7 @@
 
   ## Running the code
 
-  Run `npm i` to install the dependencies. This also installs the dependencies for the vendored `intrasight/` sub-app (via `postinstall`).
+  Run `npm i` to install the dependencies. This also installs the dependencies for the vendored `intrasight/` and `intrasight-distant-future/` sub-apps (via `postinstall`).
 
   ### Frame Generation (First Time Setup)
 
@@ -23,16 +23,17 @@
   
   Alternatively, run `npm run dev` to start only the main application.
 
-  On launch, a splash screen lets you choose between the **Near Future** and **Distant Future** versions of the application. Near Future is the current, fully-built FlexVision workflow prototype. Distant Future is currently a placeholder duplicate of Near Future, to be updated separately.
+  On launch, a splash screen lets you choose between the **Near Future** and **Distant Future** versions of the application. Both are fully-built FlexVision workflow prototypes, each embedding their own version of the Intrasight window.
 
   ### Project structure
 
   - `src/app/` – app shell, router, and splash screen.
-  - `src/versions/near-future/` – the current FlexVision workflow prototype.
-  - `src/versions/distant-future/` – placeholder for the next iteration (currently a duplicate of `near-future`).
+  - `src/versions/near-future/` – the FlexVision workflow prototype, embedding the `intrasight/` sub-app.
+  - `src/versions/distant-future/` – the next iteration of the prototype, embedding the newer `intrasight-distant-future/` sub-app.
   - `intrasight/` – vendored copy of the Intrasight/CoReg app, built independently and served under `/intrasight` (see below).
+  - `intrasight-distant-future/` – vendored copy of the newer Intrasight/Northstar app, built independently and served under `/intrasight-distant-future`.
 
-  ### Intrasight sub-app
+  ### Intrasight sub-apps
 
-  The Intrasight window is a separate Vite app vendored into this repository under `intrasight/`. It has its own `package.json`, builds independently (`npm run build:intrasight`), and is embedded via an iframe (dev: `http://localhost:3000`, production: `/intrasight/`). It no longer depends on any sibling repository.
+  The Intrasight window is a separate Vite app vendored into this repository. Near Future uses `intrasight/` (has its own `package.json`, builds via `npm run build:intrasight`, embedded via iframe: dev `http://localhost:3000`, production `/intrasight/`). Distant Future uses `intrasight-distant-future/` (builds via `npm run build:intrasight-distant-future`, embedded via iframe: dev `http://localhost:3001`, production `/intrasight-distant-future/`). Neither depends on any sibling repository anymore.
   

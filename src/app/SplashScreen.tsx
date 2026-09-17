@@ -31,9 +31,9 @@ export default function SplashScreen() {
   return (
     <div className="w-screen h-screen bg-black flex flex-col items-center justify-center gap-[48px] text-white">
       <div className="flex flex-col items-center gap-[12px]">
-        <p className="font-['CentraleSans:Medium',sans-serif] text-[20px] text-white/80">Azurion</p>
-        <h1 className="font-['CentraleSans:Book',sans-serif] text-[40px]">IVUS Flexvision</h1>
-        <p className="font-['CentraleSans:Book',sans-serif] text-[20px] text-white/60">Choose a version to launch</p>
+        <p className="font-centrale-sans-medium text-[20px] text-white/80">Azurion</p>
+        <h1 className="font-centrale-sans-book text-[40px]">IVUS Flexvision</h1>
+        <p className="font-centrale-sans-book text-[20px] text-white/60">Choose a version to launch</p>
       </div>
 
       <div className="flex gap-[32px]">
@@ -44,10 +44,10 @@ export default function SplashScreen() {
             onClick={() => navigate(version.path)}
             className="w-[360px] flex flex-col items-start gap-[8px] rounded-[4px] border border-[#3b3b3b] bg-[#171717] px-[24px] py-[20px] text-left transition-colors hover:border-[#41c9fe] hover:bg-[#1f1f1f]"
           >
-            <span className="font-['CentraleSans:Medium',sans-serif] text-[24px] text-[#41c9fe]">
+            <span className="font-centrale-sans-medium text-[24px] text-[#41c9fe]">
               {version.title}
             </span>
-            <span className="font-['CentraleSans:Book',sans-serif] text-[16px] text-white/60">
+            <span className="font-centrale-sans-book text-[16px] text-white/60">
               {version.description}
             </span>
           </button>
