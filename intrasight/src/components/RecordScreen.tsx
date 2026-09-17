@@ -3,10 +3,10 @@ import NavigationBarIgt from '../imports/NavigationBarIgt';
 import { useBookmarks } from '../contexts/BookmarkContext';
 import NumberedBookmark from './NumberedBookmark';
 // Use public assets for Electron app compatibility
-const ivusVideo = './assets/videos/IVUS recording-export.mp4';
-const xrayVideo = './assets/videos/postrecord.mov';
-const tutorialGif = './assets/images/tutorial-guide.gif';
-const ildBackgroundImage = './assets/images/a88a842f3a8fb7070c090488a99c78d4f568d185.png';
+const ivusVideo = '/intrasight/assets/videos/IVUS recording-export.mp4';
+const xrayVideo = '/intrasight/assets/videos/postrecord.mov';
+const tutorialGif = '/intrasight/assets/images/tutorial-guide.gif';
+const ildBackgroundImage = '/intrasight/assets/images/a88a842f3a8fb7070c090488a99c78d4f568d185.png';
 
 interface RecordScreenProps {
   onStopRecording: (actualDuration: number) => void;

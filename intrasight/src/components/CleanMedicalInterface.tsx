@@ -10,8 +10,8 @@ import NumberedBookmark from "./NumberedBookmark";
 import { useBookmarks } from "../contexts/BookmarkContext";
 import { calculateSegmentPath, generateSegmentPathPoints, pointsToSVGPath } from "../utils/xrayPositionMapping";
 // Use public assets for Electron app compatibility
-const ivusVideo = './assets/videos/IVUS recording-export.mp4';
-const xrayVideo = './assets/videos/postrecord.mov';
+const ivusVideo = '/intrasight/assets/videos/IVUS recording-export.mp4';
+const xrayVideo = '/intrasight/assets/videos/postrecord.mov';
 
 export default function CleanMedicalInterface({ onGoToLive, recordingDuration }: { onGoToLive?: () => void; recordingDuration: number }) {
   

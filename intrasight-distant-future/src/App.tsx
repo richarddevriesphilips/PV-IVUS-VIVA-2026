@@ -46,10 +46,10 @@ import rulerSvgPaths from "./imports/svg-rnfs0zgsud";
 
 // Video sources for different phases
 const VIDEO_SOURCES = {
-  'IVUS-recording-export.mp4': './assets/videos/IVUS-recording-export.mp4',
-  'postrecord.mov': './assets/videos/postrecord.mov',
-  xray: './assets/videos/postrecord.mov',
-  ivus: './assets/videos/IVUS-recording-export.mp4'
+  'IVUS-recording-export.mp4': '/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4',
+  'postrecord.mov': '/intrasight-distant-future/assets/videos/postrecord.mov',
+  xray: '/intrasight-distant-future/assets/videos/postrecord.mov',
+  ivus: '/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4'
 };
 
 // Helper function to calculate lumen diameter from frame number
@@ -2389,7 +2389,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   // Show live screen first
   if (appPhase === "live") {
     return (
-      <div className="flex flex-col items-center gap-6 bg-[#222222] min-h-screen p-4">
+      <div className="flex flex-col items-center gap-6 bg-[#222222] h-full overflow-auto p-4">
         {/* Live Main Screen */}
         {(screenView === "both" || screenView === "main") && (
           <div style={{ boxShadow: '0 0 35px 0px #ffffff4f', borderRadius: '20px', overflow: 'hidden' }}>
@@ -2472,7 +2472,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   // Show recording screen second
   if (appPhase === "recording") {
     return (
-      <div className="flex flex-col items-center gap-6 bg-[#222222] min-h-screen p-4">
+      <div className="flex flex-col items-center gap-6 bg-[#222222] h-full overflow-auto p-4">
         {/* Main Recording Screen */}
         {(screenView === "both" || screenView === "main") && (
           <div style={{ boxShadow: '0 0 35px 0px #ffffff4f', borderRadius: '20px', overflow: 'hidden' }}>
@@ -2624,7 +2624,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 bg-[#222222] min-h-screen p-4">
+    <div className="flex flex-col items-center gap-6 bg-[#222222] h-full overflow-auto p-4">
       {/* Main Screen - Only show if not popped out */}
       {(screenView === "both" || screenView === "main") && (!popupWindow || popupWindow.closed) && renderMainScreen()}
 

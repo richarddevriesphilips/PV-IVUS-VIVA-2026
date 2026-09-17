@@ -42,7 +42,7 @@ export function IVUSFramePlayer({
    */
   const getFramePath = useCallback((frameNumber: number): string => {
     const paddedNumber = frameNumber.toString().padStart(4, '0');
-    return `./assets/ivus-frames/frame_${paddedNumber}.jpg`;
+    return `/intrasight-distant-future/assets/ivus-frames/frame_${paddedNumber}.jpg`;
   }, []);
 
   /**

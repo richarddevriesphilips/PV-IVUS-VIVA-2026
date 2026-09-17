@@ -114,7 +114,7 @@ export function LiveTouchScreen({ onStartRecording, isSyncPlaybackEnabled }: Liv
       <div className="absolute left-[440px] top-[160px] w-[400px] h-[400px]">
         <video
           className="w-full h-full object-cover rounded-lg"
-          src="./assets/videos/IVUS-recording-export.mp4"
+          src="/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4"
           autoPlay
           loop
           muted

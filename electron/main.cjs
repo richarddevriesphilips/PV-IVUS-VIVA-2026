@@ -24,12 +24,7 @@ const MIME_TYPES = {
   ".woff2": "font/woff2",
 };
 
-// dist/ mounted at "/" plus one sub-app mount per vendored Intrasight build.
-const MOUNTS = [
-  { prefix: "/intrasight-distant-future", dir: path.join(__dirname, "..", "dist", "intrasight-distant-future") },
-  { prefix: "/intrasight", dir: path.join(__dirname, "..", "dist", "intrasight") },
-  { prefix: "", dir: path.join(__dirname, "..", "dist") },
-];
+const DIST_DIR = path.join(__dirname, "..", "dist");
 
 function sendFile(filePath, stats, req, res) {
   const ext = path.extname(filePath).toLowerCase();
@@ -54,8 +49,8 @@ function sendFile(filePath, stats, req, res) {
   }
 }
 
-function sendSpaFallback(dir, res) {
-  const indexPath = path.join(dir, "index.html");
+function sendSpaFallback(res) {
+  const indexPath = path.join(DIST_DIR, "index.html");
   fs.readFile(indexPath, (err, data) => {
     if (err) {
       res.writeHead(404);
@@ -67,28 +62,18 @@ function sendSpaFallback(dir, res) {
   });
 }
 
-// Serves `dir` for requests under `prefix`, falling back to that dir's
-// index.html for unmatched paths (client-side routing / SPA support).
-function serveMount({ dir }, subPath, req, res) {
-  const filePath = path.join(dir, subPath === "/" ? "index.html" : subPath);
-
-  fs.stat(filePath, (err, stats) => {
-    if (err || !stats.isFile()) {
-      sendSpaFallback(dir, res);
-      return;
-    }
-    sendFile(filePath, stats, req, res);
-  });
-}
-
 function createWindow() {
   server = http.createServer((req, res) => {
     const urlPath = decodeURIComponent(req.url.split("?")[0]);
+    const filePath = path.join(DIST_DIR, urlPath === "/" ? "index.html" : urlPath);
 
-    const mount = MOUNTS.find((m) => m.prefix === "" || urlPath.startsWith(m.prefix));
-    const subPath = mount.prefix ? urlPath.slice(mount.prefix.length) || "/" : urlPath;
-
-    serveMount(mount, subPath, req, res);
+    fs.stat(filePath, (err, stats) => {
+      if (err || !stats.isFile()) {
+        sendSpaFallback(res);
+        return;
+      }
+      sendFile(filePath, stats, req, res);
+    });
   });
 
   server.listen(PORT, "127.0.0.1", () => {

@@ -393,7 +393,7 @@ export function PullbackRecordingTouchScreen({
       <div className="absolute left-[492px] top-[80px] w-[400px] h-[400px]" data-name="IVUS Display">
         <video
           className="w-full h-full object-cover rounded-lg"
-          src="./assets/videos/IVUS-recording-export.mp4"
+          src="/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4"
           autoPlay
           loop
           muted

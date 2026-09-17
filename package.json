@@ -6,18 +6,11 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
-    "dev:intrasight": "npm --prefix intrasight run dev",
-    "dev:intrasight-distant-future": "npm --prefix intrasight-distant-future run dev",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:intrasight\" \"npm run dev:intrasight-distant-future\" --names \"parent,intrasight,intrasight-df\" --prefix-colors \"blue,green,magenta\"",
     "build": "vite build",
-    "build:intrasight": "npm --prefix intrasight run build",
-    "build:intrasight-distant-future": "npm --prefix intrasight-distant-future run build",
-    "build:all": "npm run build && npm run build:intrasight && npm run build:intrasight-distant-future && rm -rf dist/intrasight dist/intrasight-distant-future && cp -r intrasight/build dist/intrasight && cp -r intrasight-distant-future/build dist/intrasight-distant-future",
-    "postinstall": "npm --prefix intrasight install && npm --prefix intrasight-distant-future install",
-    "electron:dev": "npm run build:all && electron .",
-    "electron:build:mac": "npm run build:all && electron-builder --mac",
-    "electron:build:win": "npm run build:all && electron-builder --win",
-    "electron:build:all": "npm run build:all && electron-builder --mac --win"
+    "electron:dev": "npm run build && electron .",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:all": "npm run build && electron-builder --mac --win"
   },
   "build": {
     "appId": "com.philips.pvivus.workflow",
@@ -116,7 +109,6 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
-    "concurrently": "^9.2.1",
     "electron": "^41.2.0",
     "electron-builder": "^26.8.1",
     "tailwindcss": "4.1.12",

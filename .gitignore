@@ -4,6 +4,4 @@ public/frames
 release
 release/*
 dist
-intrasight/build
-intrasight-distant-future/build
 .DS_Store

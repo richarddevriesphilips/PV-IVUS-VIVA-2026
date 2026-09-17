@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import svgPaths from "./svg-paths";
 import FramePlayer from "../../components/FramePlayer";
+import IntrasightWindow from "./IntrasightWindow";
 import imgImage2 from "figma:asset/2a97af415690c33899ec327cbd66050b75adba61.png";
 import imgRectangle10 from "figma:asset/c9086bd51fc782e98eaacdee902113f255daaed2.png";
 import imgRectangle11 from "figma:asset/0aa26374bbdf16857809de604ec48e1e0389d7d8.png";
@@ -1376,19 +1377,10 @@ function Column1() {
   );
 }
 
-const intrasightUrl = import.meta.env.DEV ? "http://localhost:3000" : "/intrasight/";
-
 function Boom() {
   return (
     <div className="bg-black content-stretch flex h-full items-center justify-center overflow-clip relative shrink-0 w-full" data-name="Boom">
-      <iframe
-        src={intrasightUrl}
-        title="Intrasight"
-        className="w-full h-full border-none"
-        style={{ overflow: "hidden" }}
-        scrolling="no"
-        allow="autoplay"
-      />
+      <IntrasightWindow />
     </div>
   );
 }

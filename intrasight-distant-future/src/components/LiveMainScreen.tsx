@@ -276,7 +276,7 @@ function IVUSDisplay({ isSyncPlaybackEnabled }: IVUSDisplayProps) {
           <video
             ref={videoRef}
             className="w-full h-full object-cover rounded-full"
-            src="./assets/videos/IVUS-recording-export.mp4"
+            src="/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4"
             autoPlay
             loop
             muted

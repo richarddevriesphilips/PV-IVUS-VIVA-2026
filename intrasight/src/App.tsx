@@ -1,35 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import IVUSWorkflowApp from './components/IVUSWorkflowApp';
 
 export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  
+
+  // Fit to the container this app is mounted in, not the browser window -
+  // it's rendered directly inside a FlexVision quadrant, not a standalone page.
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const maxWidth = 1920;
+    const maxHeight = 1080;
+
     const calculateScale = () => {
-      const maxWidth = 1920;
-      const maxHeight = 1080;
-      
-      // Get viewport dimensions
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      // Calculate scale to fit viewport while maintaining aspect ratio
-      const scaleX = viewportWidth / maxWidth;
-      const scaleY = viewportHeight / maxHeight;
-      
-      // Use the smaller scale to ensure content fits, but never exceed 1
-      const newScale = Math.min(scaleX, scaleY, 1);
-      
-      setScale(newScale);
+      // clientWidth/clientHeight are layout-space (unaffected by the CSS
+      // transform this container is itself rendered through), matching the
+      // coordinate space the scaled child below is sized in. Using
+      // getBoundingClientRect() (screen-space) here would double-apply any
+      // ancestor scale.
+      const { clientWidth, clientHeight } = container;
+      setScale(Math.min(clientWidth / maxWidth, clientHeight / maxHeight));
     };
-    
-    // Calculate initial scale
+
     calculateScale();
-    
-    // Recalculate on window resize
-    window.addEventListener('resize', calculateScale);
-    
-    return () => window.removeEventListener('resize', calculateScale);
+
+    const resizeObserver = new ResizeObserver(calculateScale);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
   }, []);
 
   // Send fluoro pedal (spacebar) events to parent window
@@ -57,7 +57,7 @@ export default function App() {
   }, []);
   
   return (
-    <div className="min-h-screen min-w-full bg-gray-500 overflow-hidden flex items-center justify-center">
+    <div ref={containerRef} className="w-full h-full bg-gray-500 overflow-hidden flex items-center justify-center">
       <div 
         style={{ 
           width: `${1920 * scale}px`,

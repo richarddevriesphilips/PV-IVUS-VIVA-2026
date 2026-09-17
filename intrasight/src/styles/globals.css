@@ -5,7 +5,7 @@
 /* Centrale Sans Font Face Declarations - Using TTF fonts from public folder */
 @font-face {
   font-family: 'Centrale Sans Book';
-  src: url('./fonts/CentraleSans-Book.ttf') format('truetype');
+  src: url('/intrasight/assets/fonts/CentraleSans-Book.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -13,7 +13,7 @@
 
 @font-face {
   font-family: 'Centrale Sans Medium';
-  src: url('./fonts/CentraleSans-Medium.ttf') format('truetype');
+  src: url('/intrasight/assets/fonts/CentraleSans-Medium.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -21,7 +21,7 @@
 
 @font-face {
   font-family: 'Centrale Sans Bold';
-  src: url('./fonts/CentraleSans-Bold.ttf') format('truetype');
+  src: url('/intrasight/assets/fonts/CentraleSans-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;

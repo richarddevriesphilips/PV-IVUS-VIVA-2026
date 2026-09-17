@@ -70,21 +70,21 @@ export const PopupMainScreen: React.FC<PopupMainScreenProps> = ({
       customStyles.textContent = `
         @font-face {
           font-family: 'CentraleSans';
-          src: url('./assets/fonts/CentraleSans-Book.otf') format('opentype');
+          src: url('/intrasight-distant-future/assets/fonts/CentraleSans-Book.otf') format('opentype');
           font-weight: normal;
           font-style: normal;
           font-display: swap;
         }
         @font-face {
           font-family: 'CentraleSans';
-          src: url('./assets/fonts/CentraleSans-Medium.otf') format('opentype');
+          src: url('/intrasight-distant-future/assets/fonts/CentraleSans-Medium.otf') format('opentype');
           font-weight: 500;
           font-style: normal;
           font-display: swap;
         }
         @font-face {
           font-family: 'CentraleSans';
-          src: url('./assets/fonts/CentraleSans-Bold.otf') format('opentype');
+          src: url('/intrasight-distant-future/assets/fonts/CentraleSans-Bold.otf') format('opentype');
           font-weight: bold;
           font-style: normal;
           font-display: swap;

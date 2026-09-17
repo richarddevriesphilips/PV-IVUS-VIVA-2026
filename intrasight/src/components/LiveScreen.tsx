@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import NavigationBarIgt from '../imports/NavigationBarIgt';
 // Use public assets for Electron app compatibility
-const ivusVideo = './assets/videos/IVUS recording-export.mp4';
+const ivusVideo = '/intrasight/assets/videos/IVUS recording-export.mp4';
 
 interface LiveScreenProps {
   onStartRecording: () => void;
@@ -80,7 +80,7 @@ export default function LiveScreen({ onStartRecording }: LiveScreenProps) {
 
             {/* Tutorial Image */}
             <div className="absolute bg-center bg-cover bg-no-repeat left-[145px] size-[430px] top-[74px]" 
-                 style={{ backgroundImage: tutorialStep === 2 ? "url('./assets/89d9cf297aa794e0a11032b0c78f842dc08ea98c.png')" : "url('./assets/9d8f3891b768a6016190129e5dcb06288d204aa9.png')" }} />
+                 style={{ backgroundImage: tutorialStep === 2 ? "url('/intrasight/assets/89d9cf297aa794e0a11032b0c78f842dc08ea98c.png')" : "url('/intrasight/assets/9d8f3891b768a6016190129e5dcb06288d204aa9.png')" }} />
 
             {/* Tutorial Steps */}
             <div className="absolute left-[60px] top-[548px] w-[617px] pb-4">

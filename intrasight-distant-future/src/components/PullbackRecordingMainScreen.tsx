@@ -411,7 +411,7 @@ export function PullbackRecordingMainScreen({
             ref={xrayVideoRef}
             className="object-cover"
             style={{ width: '820px', height: '740px' }}
-            src="./assets/videos/postrecord.mov"
+            src="/intrasight-distant-future/assets/videos/postrecord.mov"
             muted
             playsInline
             preload="auto"
@@ -434,7 +434,7 @@ export function PullbackRecordingMainScreen({
         <video
           className="object-cover rounded-full"
           style={{ width: '500px', height: '500px' }}
-          src="./assets/videos/IVUS-recording-export.mp4"
+          src="/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4"
           autoPlay
           loop
           muted
