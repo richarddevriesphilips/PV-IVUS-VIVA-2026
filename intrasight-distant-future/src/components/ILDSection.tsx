@@ -4,7 +4,7 @@ import { WaveformUtils } from './utils/waveformUtils';
 import { Bookmark } from './Bookmark';
 import svgPaths from '../imports/svg-htfrh24qmy';
 import { APP_CONSTANTS } from './constants/appConstants';
-import { ConfirmedSegment } from './types';
+import type { ConfirmedSegment } from './types';
 
 // Component for confirmed (white) segment display
 function ConfirmedSegment({ segment }: { segment: ConfirmedSegment }) {
