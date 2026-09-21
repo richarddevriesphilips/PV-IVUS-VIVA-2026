@@ -73,10 +73,17 @@ function Time() {
 }
 
 function DateTimeUser() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const formattedDate = `${now.getDate().toString().padStart(2, "0")}-${months[now.getMonth()]}-${now.getFullYear()}`;
   return (
     <div className="content-stretch flex gap-[20px] items-center justify-end relative shrink-0" data-name="Date + Time + User">
       <div className="flex flex-col font-centrale-sans-book justify-center leading-[0] not-italic relative shrink-0 text-[#d6d6d6] text-[20px] whitespace-nowrap">
-        <p className="leading-[28px]">31-Jan-2024</p>
+        <p className="leading-[28px]">{formattedDate}</p>
       </div>
       <Time />
     </div>
@@ -390,10 +397,19 @@ function CorFvViewingOverview() {
 }
 
 function ForPpt() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  const hours = now.getHours();
+  const displayHours = hours % 12 || 12;
+  const minutes = now.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
   return (
     <div className="content-stretch flex gap-[80px] items-end pl-[60px] relative shrink-0" data-name="for-ppt">
       <CorFvViewingOverview />
-      <p className="font-centrale-sans-cnd-medium leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap">11:14 AM</p>
+      <p className="font-centrale-sans-cnd-medium leading-[34px] not-italic relative shrink-0 text-[#b0b0b0] text-[34px] text-right whitespace-nowrap">{displayHours}:{minutes} {ampm}</p>
     </div>
   );
 }
@@ -1213,6 +1229,10 @@ function Column() {
   const pendingSequence = useRef<"postrecord" | "treatment" | null>(null);
   const [seekFrame, setSeekFrame] = useState<number | undefined>(undefined);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
+  // Tracks the pullback's real frame position even while the pedal is up, so
+  // releasing/re-pressing it doesn't reset progress - it just stops/resumes
+  // showing it.
+  const latestFrameRef = useRef(0);
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
@@ -1237,10 +1257,15 @@ function Column() {
   }, []);
 
   useEffect(() => {
-    if (fluoroOn && pendingSequence.current) {
+    if (!fluoroOn) return;
+    if (pendingSequence.current) {
       setSequence(pendingSequence.current);
-      setSeekFrame(0);
       pendingSequence.current = null;
+      latestFrameRef.current = 0;
+      setSeekFrame(0);
+    } else if (phaseRef.current === "recording") {
+      // Pedal pressed again - reveal wherever the pullback silently advanced to.
+      setSeekFrame(latestFrameRef.current);
     }
   }, [fluoroOn]);
 
@@ -1252,13 +1277,19 @@ function Column() {
       
       if (e.data.phase === "recording" || e.data.phase === "live") {
         setSeekFrame(0);
+        latestFrameRef.current = 0;
       }
     }
 
     if (e.data.type === "intrasight-recording-time" && phaseRef.current === "recording") {
       // Convert time to frame number (30 fps)
       const frameNum = Math.floor(e.data.time * 30);
-      setSeekFrame(frameNum);
+      latestFrameRef.current = frameNum;
+      // Only reveal the advancing frame while the pedal is held - otherwise
+      // the pullback keeps advancing silently in the background.
+      if (fluoroOnRef.current) {
+        setSeekFrame(frameNum);
+      }
     }
 
     if (e.data.type === "intrasight-segment-confirmed") {
@@ -1271,11 +1302,13 @@ function Column() {
     return () => window.removeEventListener("message", handleMessage);
   }, [handleMessage]);
 
+  const isLive = phase !== "recording" || fluoroOn;
+
   return (
     <div className="bg-black content-stretch flex flex-col h-full relative shrink-0 w-full overflow-hidden border-2 border-[#3b3b3b]" data-name="Column">
       {/* Patient bar */}
       <div className="bg-[#171717] content-stretch flex gap-[20px] h-[40px] items-center px-[24px] py-[2px] shrink-0 w-full">
-        <p className="font-centrale-sans-medium leading-[20px] not-italic text-[#41c9fe] text-[20px] whitespace-nowrap shrink-0">LIVE</p>
+        <p className={`font-centrale-sans-medium leading-[20px] not-italic text-[20px] whitespace-nowrap shrink-0 ${isLive ? "text-[#41c9fe]" : "text-[#8c8c8c]"}`}>{isLive ? "LIVE" : "Not live"}</p>
         <div className="flex gap-[12px] items-center overflow-clip shrink-0">
           <div className="relative shrink-0 w-[32px] h-[32px] flex items-center justify-center">
             <img alt="" className="w-[28px] h-[20px]" src={imgStudyStateIcon} />
@@ -1284,11 +1317,11 @@ function Column() {
         </div>
         <div className="flex font-centrale-sans-book gap-[8px] items-center not-italic text-[#d6d6d6] text-[20px] whitespace-nowrap shrink-0">
           <p className="leading-[24px] opacity-50">Patient ID</p>
-          <p className="leading-[24px]">2345412</p>
+          <p className="leading-[24px]">234567</p>
         </div>
         <div className="flex font-centrale-sans-book gap-[8px] items-center not-italic text-[#d6d6d6] text-[20px] shrink-0">
           <p className="leading-[24px] opacity-50">DOB</p>
-          <p className="leading-[24px]">12-Apr-1949 (74y)</p>
+          <p className="leading-[24px]">15-Jan-1991 (33 y)</p>
         </div>
       </div>
       {/* Frame player */}
@@ -1316,37 +1349,28 @@ function Column() {
 }
 
 function Column1() {
-  const [phase, setPhase] = useState<string>("live");
-  const [isPlaying, setIsPlaying] = useState(false);
+  // Ref panel: not a live feed - only updates when the user sends a screenshot
+  // from Intrasight's top-right camera button.
   const [seekFrame, setSeekFrame] = useState<number | undefined>(undefined);
-
-  const handleMessage = useCallback((e: MessageEvent) => {
-    if (!e.data || typeof e.data.type !== "string") return;
-
-    if (e.data.type === "intrasight-phase") {
-      setPhase(e.data.phase);
-
-      if (e.data.phase === "recording") {
-        setSeekFrame(0);
-        setIsPlaying(true);
-      } else if (e.data.phase === "analysis" || e.data.phase === "live") {
-        setIsPlaying(false);
-        if (e.data.phase === "live") {
-          setSeekFrame(0);
-        }
-      }
-    }
-
-    if (e.data.type === "intrasight-recording-time" && phase === "recording") {
-      const frameNum = Math.floor(e.data.time * 30);
-      setSeekFrame(frameNum);
-    }
-  }, [phase]);
+  const [hasScreenshot, setHasScreenshot] = useState(false);
 
   useEffect(() => {
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [handleMessage]);
+    const onMsg = (e: MessageEvent) => {
+      if (!e.data || typeof e.data.type !== "string") return;
+
+      if (e.data.type === "intrasight-screenshot") {
+        setSeekFrame(Math.floor(e.data.time * 30));
+        setHasScreenshot(true);
+      }
+
+      // A fresh pullback recording invalidates the previous reference image
+      if (e.data.type === "intrasight-phase" && e.data.phase === "recording") {
+        setHasScreenshot(false);
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
 
   return (
     <div className="bg-black content-stretch flex flex-col h-full relative shrink-0 w-full overflow-hidden border border-[#3b3b3b]" data-name="Column">
@@ -1359,27 +1383,33 @@ function Column1() {
         </div>
         <div className="flex font-centrale-sans-book gap-[3px] items-center not-italic text-[#d6d6d6] text-[8px] whitespace-nowrap shrink-0">
           <p className="leading-[10px] opacity-50">Patient ID</p>
-          <p className="leading-[10px]">2345412</p>
+          <p className="leading-[10px]">234567</p>
         </div>
         <div className="flex font-centrale-sans-book gap-[3px] items-center not-italic text-[#d6d6d6] text-[8px] shrink-0">
           <p className="leading-[10px] opacity-50">DOB</p>
-          <p className="leading-[10px]">12-Apr-1949 (74y)</p>
+          <p className="leading-[10px]">15-Jan-1991 (33 y)</p>
         </div>
       </div>
-      {/* Frame player */}
-      <FramePlayer
-        sequence="postrecord"
-        isPlaying={isPlaying}
-        className="w-full flex-1 min-h-0"
-        seekToFrame={seekFrame}
-      />
+      {/* Reference frame - static until a screenshot is sent from Intrasight */}
+      {hasScreenshot ? (
+        <FramePlayer
+          sequence="postrecord"
+          isPlaying={false}
+          className="w-full flex-1 min-h-0"
+          seekToFrame={seekFrame}
+        />
+      ) : (
+        <div className="w-full flex-1 min-h-0 flex items-center justify-center">
+          <p className="font-centrale-sans-book text-[#4d4d4d] text-[10px]">No reference image</p>
+        </div>
+      )}
     </div>
   );
 }
 
 function Boom() {
   return (
-    <div className="bg-black content-stretch flex h-full items-center justify-center overflow-clip relative shrink-0 w-full" data-name="Boom">
+    <div className="content-stretch flex h-full items-start justify-start overflow-clip relative shrink-0 w-full" data-name="Boom">
       <IntrasightWindow />
     </div>
   );
@@ -1418,27 +1448,21 @@ function NewGridLayout() {
       {/* Top Bar */}
       <Group7 />
       
-      {/* Content area with sidebar + grid */}
-      <div className="absolute top-[48px] left-0 flex gap-[4px]">
+      <div className="absolute left-0 top-[48px] flex h-[2104px] w-[3840px] gap-[4px]">
         {/* Sidebar */}
         <Frame61 />
-        
-        {/* 2x2 Grid - each quadrant is 1764x1052 */}
-        <div className="grid grid-cols-2 grid-rows-2 gap-0">
-          {/* Top-left: X-ray Live */}
-          <QuadrantWrapper aspectRatio={1530 / 1650}>
+
+        <div className="flex h-full w-[960px] flex-col gap-[4px]">
+          <div className="min-h-0 flex-1">
             <Column />
-          </QuadrantWrapper>
-
-          {/* Top-right: Intrasight */}
-          <QuadrantWrapper aspectRatio={1920 / 1080}>
-            <Boom />
-          </QuadrantWrapper>
-
-          {/* Bottom-left: X-ray Ref */}
-          <QuadrantWrapper aspectRatio={569 / 646}>
+          </div>
+          <div className="min-h-0 flex-1">
             <Column1 />
-          </QuadrantWrapper>
+          </div>
+        </div>
+
+        <div className="h-full min-w-0 flex-1">
+          <Boom />
         </div>
       </div>
     </div>

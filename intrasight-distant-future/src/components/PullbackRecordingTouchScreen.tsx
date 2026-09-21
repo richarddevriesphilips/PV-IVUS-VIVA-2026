@@ -381,7 +381,7 @@ export function PullbackRecordingTouchScreen({
       <div className="absolute right-[24px] bottom-[24px]">
         <RecordingILD 
           recordingTime={recordingTime}
-          maxDuration={26}
+          maxDuration={APP_CONSTANTS.DURATION}
           width={1128}
           height={140}
           screenType="touch"

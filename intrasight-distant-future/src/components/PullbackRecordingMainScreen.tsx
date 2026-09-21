@@ -17,7 +17,7 @@ interface PullbackRecordingMainScreenProps {
   isSyncPlaybackEnabled?: boolean;
 }
 
-function NavigationBarIgt() {
+function NavigationBarIgt({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   useEffect(() => {
@@ -194,8 +194,10 @@ function NavigationBarIgt() {
                 data-name="Icons"
               >
                 <div
-                  className="box-border content-stretch flex flex-row gap-2 items-center justify-center px-3 py-2 relative rounded-sm shrink-0 size-10"
+                  className="box-border content-stretch flex flex-row gap-2 items-center justify-center px-3 py-2 relative rounded-sm shrink-0 size-10 cursor-pointer hover:bg-[rgba(255,255,255,0.1)] transition-colors"
                   data-name="🟢 Button (IGT)"
+                  onClick={onScreenshotClick}
+                  title="Send screenshot to X-ray Ref"
                 >
                   <div className="relative shrink-0 size-6" data-name="Icon">
                     <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
@@ -241,6 +243,12 @@ export function PullbackRecordingMainScreen({
   const [isSpacebarPressed, setIsSpacebarPressed] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const xrayVideoRef = useRef<HTMLVideoElement>(null);
+  // Keeps the keydown/keyup listeners below from having to re-subscribe on every
+  // 100ms recordingTime tick (that churn could drop a keyup and stick the X-ray on).
+  const recordingTimeRef = useRef(0);
+  useEffect(() => {
+    recordingTimeRef.current = recordingTime;
+  }, [recordingTime]);
   
   // Current date/time state
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -273,7 +281,15 @@ export function PullbackRecordingMainScreen({
   useEffect(() => {
     if (isRecording) {
       intervalRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 0.1);
+        setRecordingTime(prev => {
+          const next = prev + 0.1;
+          // Auto-stop once the fixed pullback duration is reached, matching near-future's behavior.
+          if (next >= APP_CONSTANTS.DURATION) {
+            handleStopRecording();
+            return APP_CONSTANTS.DURATION;
+          }
+          return next;
+        });
       }, 100); // 10x smoother - updates every 100ms instead of 1000ms
     } else {
       if (intervalRef.current) {
@@ -298,7 +314,9 @@ export function PullbackRecordingMainScreen({
     window.parent.postMessage({ type: "intrasight-recording-time", time: recordingTime }, "*");
   }, [recordingTime]);
 
-  // Handle spacebar press/release
+  // Handle spacebar press/release - registered once (not re-subscribed per
+  // recordingTime tick) so a keyup can never be dropped mid re-subscription,
+  // which was leaving the X-ray video stuck visible/advancing after release.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !e.repeat) {
@@ -306,7 +324,7 @@ export function PullbackRecordingMainScreen({
         setIsSpacebarPressed(true);
         window.parent.postMessage({ type: "intrasight-fluoro", on: true }, "*");
         // Notify parent that X-ray recording started at this time
-        onXRayRecordingStart?.(recordingTime);
+        onXRayRecordingStart?.(recordingTimeRef.current);
       }
     };
 
@@ -316,7 +334,7 @@ export function PullbackRecordingMainScreen({
         setIsSpacebarPressed(false);
         window.parent.postMessage({ type: "intrasight-fluoro", on: false }, "*");
         // Notify parent that X-ray recording stopped at this time
-        onXRayRecordingStop?.(recordingTime);
+        onXRayRecordingStop?.(recordingTimeRef.current);
       }
     };
 
@@ -327,9 +345,11 @@ export function PullbackRecordingMainScreen({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [recordingTime, onXRayRecordingStart, onXRayRecordingStop]);
+  }, [onXRayRecordingStart, onXRayRecordingStop]);
 
   const handleStopRecording = () => {
+    // Guard against double-stop (auto-stop firing right before/after a manual click).
+    if (!isRecording) return;
     setIsRecording(false);
     // Small delay before transitioning to analysis
     setTimeout(() => {
@@ -361,7 +381,7 @@ export function PullbackRecordingMainScreen({
       data-name="Pullback Recording - Main Screen"
     >
       {/* Navigation Bar - Top */}
-      <NavigationBarIgt />
+      <NavigationBarIgt onScreenshotClick={() => window.parent.postMessage({ type: "intrasight-screenshot", time: recordingTimeRef.current }, "*")} />
       
       {/* Left Half - Tutorial and X-ray Video - Only show when sync playback is enabled */}
       {isSyncPlaybackEnabled && (
@@ -454,7 +474,7 @@ export function PullbackRecordingMainScreen({
         >
           <RecordingILD 
             recordingTime={recordingTime}
-            maxDuration={26}
+            maxDuration={APP_CONSTANTS.DURATION}
             width={1870}
             height={183}
             screenType="main"
@@ -475,48 +495,42 @@ export function PullbackRecordingMainScreen({
         )}
       </div>
 
-      {/* Action Buttons - Separate wrapper below ILD */}
-      <div 
-        className="absolute flex flex-row z-10"
-        style={{ right: '40px', bottom: '16px', gap: '16px' }}
+      {/* Action Buttons - same absolute left-column layout as the Live screen for consistency */}
+      <button
+        onClick={handleBookmark}
+        className="absolute left-[1460px] top-[1024px] bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px] h-10 hover:bg-[rgba(109,109,109,0.65)] transition-colors cursor-pointer"
+        data-name="Bookmark Button"
       >
-          <button
-            onClick={handleBookmark}
-            className="bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm hover:bg-[rgba(109,109,109,0.65)] transition-colors cursor-pointer"
-            style={{ width: '214px', height: '40px' }}
-            data-name="Bookmark Button"
-          >
-            <div className="relative shrink-0 size-6" data-name="Bookmark">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                <g id="Bookmark">
-                  <path d="M18 23L12 17L6 23V1H18V23Z" fill="#E8E8E8" id="path" />
-                </g>
-              </svg>
-            </div>
-            <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
-              <p className="block leading-[22px] whitespace-pre">{bookmarkButtonText}</p>
-            </div>
-          </button>
-          
-          <button
-            onClick={handleStopRecording}
-            className="bg-[#1474a4] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm hover:bg-[#1a85b5] transition-colors cursor-pointer"
-            style={{ width: '214px', height: '40px' }}
-            data-name="Stop Button"
-          >
-            <div className="relative shrink-0 size-6" data-name="RecordStop">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                <g id="RecordStop">
-                  <circle cx="12" cy="12" r="10" fill="white" />
-                  <rect x="8" y="8" width="8" height="8" fill="#1474a4" />
-                </g>
-              </svg>
-            </div>
-            <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#ffffff] text-[16px] text-left text-nowrap">
-              <p className="block leading-[22px] whitespace-pre">Stop</p>
-            </div>
-          </button>
-      </div>
+        <div className="relative shrink-0 size-6" data-name="Bookmark">
+          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <g id="Bookmark">
+              <path d="M18 23L12 17L6 23V1H18V23Z" fill="#E8E8E8" id="path" />
+            </g>
+          </svg>
+        </div>
+        <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
+          <p className="block leading-[22px] whitespace-pre">{bookmarkButtonText}</p>
+        </div>
+      </button>
+
+      <button
+        onClick={handleStopRecording}
+        disabled={!isRecording}
+        className="absolute left-[1690px] top-[1024px] bg-[#1474a4] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px] h-10 hover:bg-[#1a85b5] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+        data-name="Stop Button"
+      >
+        <div className="relative shrink-0 size-6" data-name="RecordStop">
+          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <g id="RecordStop">
+              <circle cx="12" cy="12" r="10" fill="white" />
+              <rect x="8" y="8" width="8" height="8" fill="#1474a4" />
+            </g>
+          </svg>
+        </div>
+        <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#ffffff] text-[16px] text-left text-nowrap">
+          <p className="block leading-[22px] whitespace-pre">Stop</p>
+        </div>
+      </button>
 
     </div>
   );

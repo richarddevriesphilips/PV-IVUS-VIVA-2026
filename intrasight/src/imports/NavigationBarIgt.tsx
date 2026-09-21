@@ -212,9 +212,14 @@ function Icon() {
   );
 }
 
-function ButtonIgt() {
+function ButtonIgt({ onClick }: { onClick?: () => void }) {
   return (
-    <div className="box-border content-stretch flex gap-2 items-center justify-center px-3 py-2 relative rounded-[2px] shrink-0 size-10" data-name="🟢 Button (IGT)">
+    <div
+      className="box-border content-stretch flex gap-2 items-center justify-center px-3 py-2 relative rounded-[2px] shrink-0 size-10 cursor-pointer hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+      data-name="🟢 Button (IGT)"
+      onClick={onClick}
+      title="Send screenshot to X-ray Ref"
+    >
       <Icon />
     </div>
   );
@@ -238,54 +243,54 @@ function ButtonIgt1() {
   );
 }
 
-function Icons() {
+function Icons({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
   return (
     <div className="content-stretch flex gap-1 items-center justify-end relative shrink-0" data-name="Icons">
-      <ButtonIgt />
+      <ButtonIgt onClick={onScreenshotClick} />
       <ButtonIgt1 />
     </div>
   );
 }
 
-function RightSide() {
+function RightSide({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
   return (
     <div className="content-stretch flex gap-3 h-12 items-center justify-end relative shrink-0" data-name="Right side">
       <DateTimeUser />
-      <Icons />
+      <Icons onScreenshotClick={onScreenshotClick} />
     </div>
   );
 }
 
-function Right() {
+function Right({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
   return (
     <div className="absolute content-stretch flex gap-2 h-12 items-center justify-end right-4 top-1/2 translate-y-[-50%]" data-name="Right">
-      <RightSide />
+      <RightSide onScreenshotClick={onScreenshotClick} />
     </div>
   );
 }
 
-function TopRow() {
+function TopRow({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
   return (
     <div className="content-stretch flex gap-2.5 h-14 items-center justify-start relative shrink-0 w-full" data-name="Top row">
       <Background />
       <Left1 />
-      <Right />
+      <Right onScreenshotClick={onScreenshotClick} />
     </div>
   );
 }
 
-function Template() {
+function Template({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
   return (
     <div className="box-border content-stretch flex flex-col items-center justify-start relative shadow-[0px_1px_6px_0px_rgba(0,0,0,0.2)] shrink-0 w-full" data-name="Template">
-      <TopRow />
+      <TopRow onScreenshotClick={onScreenshotClick} />
     </div>
   );
 }
 
-export default function NavigationBarIgt() {
+export default function NavigationBarIgt({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
   return (
     <div className="content-stretch flex flex-col items-start justify-start relative size-full" data-name="Navigation bar (IGT)">
-      <Template />
+      <Template onScreenshotClick={onScreenshotClick} />
     </div>
   );
 }

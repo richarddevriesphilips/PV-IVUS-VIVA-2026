@@ -174,7 +174,11 @@ export default function RecordScreen({ onStopRecording }: RecordScreenProps) {
         
         // Store precise time for bookmark positioning
         preciseRecordingTimeRef.current = animationTarget;
-        
+
+        // Keep the X-ray Live/Ref quadrants in the parent app synced to this
+        // exact recording position (same source video as the frame sequences).
+        window.parent.postMessage({ type: "intrasight-recording-time", time: animationTarget }, "*");
+
         // Ease towards target for smooth movement
         currentPosition += (animationTarget - currentPosition) * 0.1;
         
@@ -303,7 +307,11 @@ export default function RecordScreen({ onStopRecording }: RecordScreenProps) {
       `}</style>
       {/* Top Navigation Bar */}
       <div className="absolute top-0 left-0 w-full h-14 z-100">
-        <NavigationBarIgt />
+        <NavigationBarIgt
+          onScreenshotClick={() => {
+            window.parent.postMessage({ type: "intrasight-screenshot", time: preciseRecordingTimeRef.current }, "*");
+          }}
+        />
       </div>
 
       {/* Main Content Area */}

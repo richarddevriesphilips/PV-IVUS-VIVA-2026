@@ -6,6 +6,7 @@ import imgVector1 from "figma:asset/834560562e4c7a24b0fdc6a9c07343445272fa9f.png
 import { Bookmark } from "./Bookmark";
 import SegmentDefaultEditing from "../imports/SegmentDefaultEditing-2129-359";
 import { getBorderMeasurements } from "../utils/ivusBorders";
+import { APP_CONSTANTS } from "./constants/appConstants";
 
 // TouchScreen Frame Button Component - matches main screen behavior
 interface TouchScreenFrameButtonProps {
@@ -257,7 +258,7 @@ export function TouchScreenILD({ currentTime, duration, onScrubberChange, onDrag
   const waveformData = useMemo(() => {
     const numPoints = 400;
     const trackWidth = 952; // Usable width (1016 - 64)
-    const DURATION = 26;
+    const DURATION = APP_CONSTANTS.DURATION;
     const FPS = 30;
 
     // 1. Collect real measurements
@@ -296,7 +297,7 @@ export function TouchScreenILD({ currentTime, duration, onScrubberChange, onDrag
   // Update scrubber position based on video progress
   useEffect(() => {
     if (duration > 0 && !isDragging) {
-      const percentage = currentTime / 26; // Always use 26-second duration
+      const percentage = currentTime / APP_CONSTANTS.DURATION;
       const startPosition = 44; // Starting position from Figma
       const endPosition = 1021; // End position from Figma design
       const usableWidth = endPosition - startPosition; // 977px usable width

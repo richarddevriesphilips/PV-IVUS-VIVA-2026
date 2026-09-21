@@ -6954,13 +6954,6 @@ html {
   }
 }
 
-button {
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  display: block !important;
-}
-
 input[type="range"] {
   appearance: none;
   cursor: pointer;

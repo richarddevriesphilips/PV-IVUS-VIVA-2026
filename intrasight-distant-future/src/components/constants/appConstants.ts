@@ -1,7 +1,7 @@
 // Application-wide constants for the IVUS medical imaging system
 export const APP_CONSTANTS = {
   // Video configuration
-  DURATION: 26, // Fixed 26-second duration
+  DURATION: 32, // Fixed 32-second duration (matches the near-future/CoReg pullback length)
   FPS: 30, // Frames per second
   VIDEO_SYNC_DELAY: 50, // Milliseconds
   

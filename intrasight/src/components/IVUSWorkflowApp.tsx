@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LiveScreen from './LiveScreen';
 import RecordScreen from './RecordScreen';
 import CleanMedicalInterface from './CleanMedicalInterface';
@@ -10,6 +10,12 @@ function IVUSWorkflowAppInner() {
   const [currentStage, setCurrentStage] = useState<WorkflowStage>('live');
   const [recordingDuration, setRecordingDuration] = useState<number>(26); // Track actual recording duration
   const { clearAllBookmarks, clearXRayTimeRanges } = useBookmarks();
+
+  // Let the parent FlexVision app (X-ray Live / X-ray Ref quadrants) know which
+  // stage we're in, so it can drive its FramePlayer in sync with this workflow.
+  useEffect(() => {
+    window.parent.postMessage({ type: "intrasight-phase", phase: currentStage }, "*");
+  }, [currentStage]);
 
   const handleStartRecording = () => {
     // Clear bookmarks and X-ray time ranges when going from analysis back to recording

@@ -64,7 +64,7 @@ function LightRecordingTimer({ recordingTime }: { recordingTime: number }) {
 
 export function RecordingILD({ 
   recordingTime, 
-  maxDuration = 26, 
+  maxDuration = APP_CONSTANTS.DURATION, 
   width = 1128, 
   height = 140,
   screenType = 'touch',

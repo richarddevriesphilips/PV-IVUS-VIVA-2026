@@ -119,6 +119,28 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   const [isSyncPlaybackEnabled, setIsSyncPlaybackEnabled] = useState(true);
   const [isControlPanelVisible, setIsControlPanelVisible] = useState(false);
   const [manuallyHidden, setManuallyHidden] = useState(false);
+
+  // Fit the fixed 1920x1080 main screen exactly to the FlexVision quadrant
+  // it's embedded in (no padding/scrollbars - just the scaled window).
+  const mainScreenContainerRef = useRef<HTMLDivElement>(null);
+  const [mainScreenScale, setMainScreenScale] = useState(1);
+
+  useEffect(() => {
+    const container = mainScreenContainerRef.current;
+    if (!container) return;
+
+    const calculateScale = () => {
+      const { clientWidth, clientHeight } = container;
+      setMainScreenScale(Math.min(clientWidth / 1920, clientHeight / 1080));
+    };
+
+    calculateScale();
+
+    const resizeObserver = new ResizeObserver(calculateScale);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, []);
   
   // Popover state
   const [isPopoverVisible, setIsPopoverVisible] = useState(false);
@@ -203,69 +225,28 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   const bookmarkButtonText = bookmarkManager.getBookmarkButtonText(scrubberPosition);
   
   // Calculate diamond positions for both screens
+  // Diamond position on the main screen (video-relative coords). The touch-screen scaled
+  // variant was removed as dead code once touch-screen rendering was dropped.
   const diamondPositions = useMemo(() => {
-    // When dragging (scrubber or segment handles) or should maintain dragged position (during popover), use the dragged coordinates
     if (isDiamondDragging || shouldMaintainDraggedPosition || isSegmentHandleDragging) {
       // diamondPosition contains main screen video coordinates relative to video bounds (0-718, 0-796)
-      const mainScreenVideoWidth = 718;
-      const touchScreenVideoWidth = segmentManager.isSegmentActive ? 300 : 455;
-      const scaleX = touchScreenVideoWidth / mainScreenVideoWidth;
-      
-      const mainScreenVideoHeight = 796;
-      const touchScreenVideoHeight = segmentManager.isSegmentActive ? 280 : 480;
-      const scaleY = touchScreenVideoHeight / mainScreenVideoHeight;
-      
-      // Touch screen X-ray video offset (positioned at left-[152px], top-6 = 24px)
-      const touchVideoOffsetX = 152;
-      const touchVideoOffsetY = 24;
-      
       return {
         main: {
           x: diamondPosition.x - 14, // Center the 28px diamond
           y: diamondPosition.y - 14
-        },
-        touch: {
-          // Position relative to touch screen container (not video element)
-          // Scale main screen video coords to touch screen video coords, then add container offset
-          x: touchVideoOffsetX + (diamondPosition.x * scaleX) - 14,
-          y: touchVideoOffsetY + (diamondPosition.y * scaleY) - 14
         }
       };
     } else {
       // Follow main timeline with any applied offset
       const basePosition = PositionUtils.getMainScreenIndicatorPosition(currentTime);
-      const mainX = APP_CONSTANTS.INDICATOR.BASE_OFFSET_X + basePosition.x + diamondOffset.x;
-      const mainY = APP_CONSTANTS.INDICATOR.BASE_OFFSET_Y + basePosition.y + diamondOffset.y;
-      
-      // Calculate touch screen position by scaling main screen timeline position to touch screen X-ray area
-      const mainScreenVideoWidth = 718;
-      const touchScreenVideoWidth = segmentManager.isSegmentActive ? 300 : 455;
-      const scaleX = touchScreenVideoWidth / mainScreenVideoWidth;
-      
-      const mainScreenVideoHeight = 796;
-      const touchScreenVideoHeight = segmentManager.isSegmentActive ? 280 : 480;
-      const scaleY = touchScreenVideoHeight / mainScreenVideoHeight;
-      
-      // Touch screen X-ray video offset (positioned at left-[152px], top-6 = 24px)
-      const touchVideoOffsetX = 152;
-      const touchVideoOffsetY = 24;
-      
-      // Scale the main screen timeline position to touch screen coordinates
-      const touchX = touchVideoOffsetX + (basePosition.x * scaleX) + (diamondOffset.x * scaleX);
-      const touchY = touchVideoOffsetY + (basePosition.y * scaleY) + (diamondOffset.y * scaleY);
-      
       return {
         main: {
-          x: mainX,
-          y: mainY
-        },
-        touch: {
-          x: touchX,
-          y: touchY
+          x: APP_CONSTANTS.INDICATOR.BASE_OFFSET_X + basePosition.x + diamondOffset.x,
+          y: APP_CONSTANTS.INDICATOR.BASE_OFFSET_Y + basePosition.y + diamondOffset.y
         }
       };
     }
-  }, [diamondPosition, isDiamondDragging, shouldMaintainDraggedPosition, isSegmentHandleDragging, currentTime, diamondOffset, segmentManager.isSegmentActive]);
+  }, [diamondPosition, isDiamondDragging, shouldMaintainDraggedPosition, isSegmentHandleDragging, currentTime, diamondOffset]);
   
   // Calculate positions for all three segment handles when segment is active
   const segmentHandlePositions = useMemo(() => {
@@ -297,46 +278,14 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
       };
     };
 
-    const mainScreenVideoWidth = 718;
-    const touchScreenVideoWidth = 300; // Segment mode uses smaller video
-    const scaleX = touchScreenVideoWidth / mainScreenVideoWidth;
-    
-    const mainScreenVideoHeight = 796;
-    const touchScreenVideoHeight = 280; // Segment mode uses smaller video
-    const scaleY = touchScreenVideoHeight / mainScreenVideoHeight;
-    
-    const touchVideoOffsetX = 152;
-    const touchVideoOffsetY = 24;
-
     const leftPos = calculateHandleXRayPosition(leftHandleTime);
     const middlePos = calculateHandleXRayPosition(middleHandleTime);
     const rightPos = calculateHandleXRayPosition(rightHandleTime);
 
     return {
-      left: {
-        main: { x: leftPos.x, y: leftPos.y },
-        touch: {
-          x: touchVideoOffsetX + ((leftPos.x - APP_CONSTANTS.INDICATOR.BASE_OFFSET_X) * scaleX),
-          y: touchVideoOffsetY + ((leftPos.y - APP_CONSTANTS.INDICATOR.BASE_OFFSET_Y) * scaleY)
-        },
-        time: leftHandleTime
-      },
-      middle: {
-        main: { x: middlePos.x, y: middlePos.y },
-        touch: {
-          x: touchVideoOffsetX + ((middlePos.x - APP_CONSTANTS.INDICATOR.BASE_OFFSET_X) * scaleX),
-          y: touchVideoOffsetY + ((middlePos.y - APP_CONSTANTS.INDICATOR.BASE_OFFSET_Y) * scaleY)
-        },
-        time: middleHandleTime
-      },
-      right: {
-        main: { x: rightPos.x, y: rightPos.y },
-        touch: {
-          x: touchVideoOffsetX + ((rightPos.x - APP_CONSTANTS.INDICATOR.BASE_OFFSET_X) * scaleX),
-          y: touchVideoOffsetY + ((rightPos.y - APP_CONSTANTS.INDICATOR.BASE_OFFSET_Y) * scaleY)
-        },
-        time: rightHandleTime
-      }
+      left: { main: { x: leftPos.x, y: leftPos.y }, time: leftHandleTime },
+      middle: { main: { x: middlePos.x, y: middlePos.y }, time: middleHandleTime },
+      right: { main: { x: rightPos.x, y: rightPos.y }, time: rightHandleTime }
     };
   }, [segmentManager.isSegmentActive, segmentManager.segmentLeft, segmentManager.segmentWidth, segmentManager.middleHandlePosition]);
   
@@ -456,13 +405,13 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   };
 
   // Handle X-ray recording start (spacebar pressed)
-  const handleXRayRecordingStart = (currentRecordingTime: number) => {
+  const handleXRayRecordingStart = useCallback((currentRecordingTime: number) => {
     xrayRecordingStartTimeRef.current = currentRecordingTime;
     console.log(`X-ray recording started at ${currentRecordingTime.toFixed(2)}s`);
-  };
+  }, []);
 
   // Handle X-ray recording stop (spacebar released)
-  const handleXRayRecordingStop = (currentRecordingTime: number) => {
+  const handleXRayRecordingStop = useCallback((currentRecordingTime: number) => {
     if (xrayRecordingStartTimeRef.current !== null) {
       const newInterval: XRayInterval = {
         start: xrayRecordingStartTimeRef.current,
@@ -472,7 +421,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
       console.log(`X-ray recording stopped at ${currentRecordingTime.toFixed(2)}s`, newInterval);
       xrayRecordingStartTimeRef.current = null;
     }
-  };
+  }, []);
 
   // Check if current time has X-ray recorded
   const hasXRayAtTime = useCallback((time: number): boolean => {
@@ -560,6 +509,26 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     setIsPlaying(newPlayingState);
   };
 
+  const calculateScrubberPositionFromPointer = useCallback((clientX: number) => {
+    if (!trackRef.current) return null;
+
+    const rect = trackRef.current.getBoundingClientRect();
+    const scale = rect.width / 1543;
+    const mouseX = (clientX - rect.left) / scale;
+
+    return PositionUtils.constrainScrubberPosition(mouseX);
+  }, []);
+
+  const updateTimelineFromScrubberPosition = (position: number) => {
+    const newTime = PositionUtils.scrubberPositionToTime(position);
+
+    setScrubberPosition(position);
+    setCurrentTime(newTime);
+    updateVideoTimesWithXRayLogic(newTime);
+
+    return newTime;
+  };
+
   const handleScrubberMouseDown = (e: React.MouseEvent) => {
     if (segmentManager.isSegmentActive) return; // Disable during segment editing
     
@@ -570,24 +539,10 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     videoManager.startDragUpdateSystem();
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!trackRef.current) return;
-      const rect = trackRef.current.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      
-      // Use absolute position constraints based on ILD boundaries
-      const { ILD_LEFT_BOUNDARY, ILD_USABLE_WIDTH } = APP_CONSTANTS.MAIN_SCREEN;
-      const constrainedPosition = Math.max(
-        ILD_LEFT_BOUNDARY,
-        Math.min(mouseX, ILD_LEFT_BOUNDARY + ILD_USABLE_WIDTH)
-      );
-      
-      setScrubberPosition(constrainedPosition);
-      
-      // Calculate time based on position within usable track area
-      const percentage = (constrainedPosition - ILD_LEFT_BOUNDARY) / ILD_USABLE_WIDTH;
-      const newTime = percentage * APP_CONSTANTS.DURATION;
-      setCurrentTime(newTime);
-      updateVideoTimesWithXRayLogic(newTime);
+      const constrainedPosition = calculateScrubberPositionFromPointer(e.clientX);
+      if (constrainedPosition === null) return;
+
+      updateTimelineFromScrubberPosition(constrainedPosition);
     };
 
     const handleMouseUp = (e: MouseEvent) => {
@@ -600,6 +555,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
+    handleMouseMove(e.nativeEvent);
   };
 
   const handleMainTrackClick = (e: React.MouseEvent) => {
@@ -607,25 +563,10 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     
     // Prevent event bubbling to avoid conflicts
     e.stopPropagation();
-    
-    const rect = trackRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    
-    // Use absolute position constraints based on ILD boundaries
-    const { ILD_LEFT_BOUNDARY, ILD_USABLE_WIDTH } = APP_CONSTANTS.MAIN_SCREEN;
-    const constrainedPosition = Math.max(
-      ILD_LEFT_BOUNDARY,
-      Math.min(mouseX, ILD_LEFT_BOUNDARY + ILD_USABLE_WIDTH)
-    );
-    
-    setScrubberPosition(constrainedPosition);
-    
-    // Calculate time based on position within usable track area
-    const percentage = (constrainedPosition - ILD_LEFT_BOUNDARY) / ILD_USABLE_WIDTH;
-    const newTime = Math.min(percentage * APP_CONSTANTS.DURATION, APP_CONSTANTS.DURATION);
-    
-    setCurrentTime(newTime);
-    updateVideoTimesWithXRayLogic(newTime);
+
+    const constrainedPosition = calculateScrubberPositionFromPointer(e.clientX);
+    if (constrainedPosition === null) return;
+    const newTime = updateTimelineFromScrubberPosition(constrainedPosition);
     
     // Update diamond time to follow main timeline if not being dragged independently
     if (!isDiamondDragging) {
@@ -1441,7 +1382,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
 
   // Render main screen component for use in both normal view and popup
   const renderMainScreen = () => (
-    <div className="bg-[#000000] relative w-[1920px] h-[1080px] overflow-hidden" style={{ boxShadow: '0 0 35px 0px #ffffff4f', borderRadius: '20px' }}>
+    <div className="bg-[#000000] relative w-[1920px] h-[1080px] overflow-hidden">
       <NavigationBar />
 
       {/* Main Content Area */}
@@ -2150,8 +2091,8 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
       {/* Scrubber */}
       {!segmentManager.isSegmentActive && (
         <div
-          className="absolute cursor-pointer h-[167px] top-[835px] w-10 z-20"
-          style={{ left: `${scrubberPosition}px` }}
+          className="absolute cursor-pointer h-[167px] top-[835px] w-12 z-20"
+          style={{ left: `${scrubberPosition - 24}px` }}
           onMouseDown={handleScrubberMouseDown}
         >
           <div className="absolute bottom-0 left-[-10%] right-[-10%] top-0 pointer-events-auto">
@@ -2389,80 +2330,14 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   // Show live screen first
   if (appPhase === "live") {
     return (
-      <div className="flex flex-col items-center gap-6 bg-[#222222] h-full overflow-auto p-4">
-        {/* Live Main Screen */}
-        {(screenView === "both" || screenView === "main") && (
-          <div style={{ boxShadow: '0 0 35px 0px #ffffff4f', borderRadius: '20px', overflow: 'hidden' }}>
+      <div ref={mainScreenContainerRef} className="w-full h-full overflow-hidden bg-black flex items-start justify-start">
+        <div style={{ width: 1920 * mainScreenScale, height: 1080 * mainScreenScale }}>
+          <div style={{ transform: `scale(${mainScreenScale})`, transformOrigin: "top left", width: 1920, height: 1080 }}>
             <LiveMainScreen 
               onStartRecording={handleStartRecording}
               isSyncPlaybackEnabled={isSyncPlaybackEnabled}
+              onToggleSyncPlayback={() => setIsSyncPlaybackEnabled((enabled) => !enabled)}
             />
-          </div>
-        )}
-
-        {/* Live Touch Screen */}
-        {(screenView === "both" || screenView === "touch") && (
-          <div style={{ boxShadow: '0 0 35px 0px #ffffff4f', borderRadius: '20px', overflow: 'hidden' }}>
-            <LiveTouchScreen 
-              onStartRecording={handleStartRecording}
-              isSyncPlaybackEnabled={isSyncPlaybackEnabled}
-            />
-          </div>
-        )}
-
-        {/* Screen Selection Control - Auto-hide panel */}
-        <div 
-          className="fixed right-0 top-1/2 bg-[#212121] rounded-l-lg p-4 flex flex-col gap-4 transition-transform duration-300 ease-in-out z-50"
-          style={{
-            transform: `translateY(-50%) translateX(${
-              isControlPanelVisible ? '0' : '100%'
-            })`
-          }}
-        >
-          {/* Hide Panel Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log('Close button clicked');
-              setIsControlPanelVisible(false);
-              setManuallyHidden(true);
-            }}
-            className="absolute top-2 right-2 p-1 hover:bg-[rgba(255,255,255,0.1)] rounded transition-colors z-10 cursor-pointer"
-            aria-label="Hide panel"
-            type="button"
-          >
-            <svg className="w-4 h-4 text-[#e8e8e8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          <div className="flex flex-col gap-2">
-            <div className="font-['CentraleSans',_sans-serif] text-white text-[14px] font-medium">Screen View</div>
-            <div className="flex flex-col gap-2">
-              {(["both", "main", "touch"] as const).map((view) => (
-                <button
-                  key={view}
-                  onClick={() => setScreenView(view)}
-                  className={`px-3 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-[13px] transition-colors whitespace-nowrap ${
-                    screenView === view ? "bg-[#1474a4] text-white" : "bg-[rgba(89,89,89,0.55)] text-[#e8e8e8]"
-                  }`}
-                >
-                  {view === "both" ? "Both" : view === "main" ? "Main" : "Touch"}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="flex flex-col gap-2 border-t border-[rgba(89,89,89,0.55)] pt-4">
-            <div className="font-['CentraleSans',_sans-serif] text-[#e8e8e8] text-[12px]">
-              Skip to analysis:
-            </div>
-            <button
-              onClick={handleStartAnalysis}
-              className="bg-[#21b9ff] hover:bg-[#1a95cc] px-6 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-white text-[14px] font-medium transition-colors"
-            >
-              Skip to Analysis
-            </button>
           </div>
         </div>
       </div>
@@ -2472,10 +2347,9 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   // Show recording screen second
   if (appPhase === "recording") {
     return (
-      <div className="flex flex-col items-center gap-6 bg-[#222222] h-full overflow-auto p-4">
-        {/* Main Recording Screen */}
-        {(screenView === "both" || screenView === "main") && (
-          <div style={{ boxShadow: '0 0 35px 0px #ffffff4f', borderRadius: '20px', overflow: 'hidden' }}>
+      <div ref={mainScreenContainerRef} className="w-full h-full overflow-hidden bg-black flex items-start justify-start">
+        <div style={{ width: 1920 * mainScreenScale, height: 1080 * mainScreenScale }}>
+          <div style={{ transform: `scale(${mainScreenScale})`, transformOrigin: "top left", width: 1920, height: 1080 }}>
             <PullbackRecordingMainScreen 
               onStartAnalysis={handleStartAnalysis}
               bookmarks={bookmarkManager.bookmarks}
@@ -2487,78 +2361,6 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               onXRayRecordingStop={handleXRayRecordingStop}
               isSyncPlaybackEnabled={isSyncPlaybackEnabled}
             />
-          </div>
-        )}
-
-        {/* Touch Recording Screen */}
-        {(screenView === "both" || screenView === "touch") && (
-          <div style={{ boxShadow: '0 0 35px 0px #ffffff4f', borderRadius: '20px', overflow: 'hidden' }}>
-            <PullbackRecordingTouchScreen 
-              onStartAnalysis={handleStartAnalysis}
-              bookmarks={bookmarkManager.bookmarks}
-              onBookmarkToggle={(position, time, xrayPosition) => 
-                bookmarkManager.handleBookmarkToggle(position, time, xrayPosition)
-              }
-              getBookmarkButtonText={bookmarkManager.getBookmarkButtonText}
-              onXRayRecordingStart={handleXRayRecordingStart}
-              onXRayRecordingStop={handleXRayRecordingStop}
-            />
-          </div>
-        )}
-
-        {/* Screen Selection Control - Auto-hide panel */}
-        <div 
-          className="fixed right-0 top-1/2 bg-[#212121] rounded-l-lg p-4 flex flex-col gap-4 transition-transform duration-300 ease-in-out z-50"
-          style={{
-            transform: `translateY(-50%) translateX(${
-              isControlPanelVisible ? '0' : '100%'
-            })`
-          }}
-        >
-          {/* Hide Panel Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log('Close button clicked');
-              setIsControlPanelVisible(false);
-              setManuallyHidden(true);
-            }}
-            className="absolute top-2 right-2 p-1 hover:bg-[rgba(255,255,255,0.1)] rounded transition-colors z-10 cursor-pointer"
-            aria-label="Hide panel"
-            type="button"
-          >
-            <svg className="w-4 h-4 text-[#e8e8e8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          <div className="flex flex-col gap-2">
-            <div className="font-['CentraleSans',_sans-serif] text-white text-[14px] font-medium">Screen View</div>
-            <div className="flex flex-col gap-2">
-              {(["both", "main", "touch"] as const).map((view) => (
-                <button
-                  key={view}
-                  onClick={() => setScreenView(view)}
-                  className={`px-3 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-[13px] transition-colors whitespace-nowrap ${
-                    screenView === view ? "bg-[#1474a4] text-white" : "bg-[rgba(89,89,89,0.55)] text-[#e8e8e8]"
-                  }`}
-                >
-                  {view === "both" ? "Both" : view === "main" ? "Main" : "Touch"}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="flex flex-col gap-2 border-t border-[rgba(89,89,89,0.55)] pt-4">
-            <div className="font-['CentraleSans',_sans-serif] text-[#e8e8e8] text-[12px]">
-              Skip to analysis:
-            </div>
-            <button
-              onClick={handleStartAnalysis}
-              className="bg-[#21b9ff] hover:bg-[#1a95cc] px-6 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-white text-[14px] font-medium transition-colors"
-            >
-              Skip to Analysis
-            </button>
           </div>
         </div>
       </div>
@@ -2624,89 +2426,13 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 bg-[#222222] h-full overflow-auto p-4">
+    <div ref={mainScreenContainerRef} className="w-full h-full overflow-hidden bg-black flex items-start justify-start">
       {/* Main Screen - Only show if not popped out */}
-      {(screenView === "both" || screenView === "main") && (!popupWindow || popupWindow.closed) && renderMainScreen()}
-
-      {/* Touch Screen */}
-      {(screenView === "both" || screenView === "touch") && (
-        <div style={{ boxShadow: '0 0 35px 0px #ffffff4f', borderRadius: '20px', overflow: 'hidden' }}>
-          <TouchScreen
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            onPlayPause={handlePlayPause}
-            onScrubberChange={handleTouchScreenScrubber}
-            onDragStateChange={handleTouchScreenDragState}
-            touchLeftVideoRef={touchLeftVideoRef}
-            touchRightVideoRef={touchRightVideoRef}
-            onVideoMetadataLoaded={() => {}} // Don't count these in loading since they're loaded later
-            onVideoError={() => {}}
-            isXRayHidden={isXRayHidden}
-            onXRayToggle={() => setIsXRayHidden(!isXRayHidden)}
-            isVirtualRulerVisible={isVirtualRulerVisible}
-            onVirtualRulerToggle={() => setIsVirtualRulerVisible(!isVirtualRulerVisible)}
-            bookmarks={bookmarkManager.bookmarks}
-            onBookmarkClick={handleBookmarkClick}
-            onBookmarkToggle={handleBookmarkToggle}
-            bookmarkButtonText={bookmarkButtonText}
-            onAddSegment={() => segmentManager.handleAddSegment(scrubberPosition)}
-            isSegmentActive={segmentManager.isSegmentActive}
-            segmentPosition={segmentManager.segmentPosition}
-            segmentWidth={segmentManager.segmentWidth}
-            segmentLeft={segmentManager.segmentLeft}
-            onSegmentMove={handleSegmentMove}
-            onSegmentResize={handleSegmentResize}
-            onMiddleFrameDrag={handleMiddleFrameDrag}
-            middleHandlePosition={segmentManager.middleHandlePosition}
-            segmentType={segmentManager.segmentType}
-            onSegmentTypeChange={segmentManager.setSegmentType}
-            onSegmentConfirm={() => segmentManager.handleSegmentConfirm(calculateSegmentLengthWithXRayCheck(segmentManager.segmentLeft, segmentManager.segmentWidth))}
-            onSegmentCancel={segmentManager.handleSegmentCancel}
-            onSegmentDelete={segmentManager.handleSegmentDelete}
-            segmentLength={calculateSegmentLengthWithXRayCheck(segmentManager.segmentLeft, segmentManager.segmentWidth)}
-            segmentLabel={currentSegmentLabel}
-            onSegmentSizeIncrease={segmentManager.handleSegmentSizeIncrease}
-            onSegmentSizeDecrease={segmentManager.handleSegmentSizeDecrease}
-            confirmedSegments={segmentManager.confirmedSegments}
-            onEditConfirmedSegment={handleEditConfirmedSegment}
-            // Pass video URLs to TouchScreen
-            xrayVideoUrl={VIDEO_SOURCES.xray}
-            ivusVideoUrl={VIDEO_SOURCES.ivus}
-            // Pass segment handle positions for diamond display
-            segmentHandlePositions={segmentHandlePositions}
-            // Pass scrubber collision update function
-            onScrubberPositionUpdate={segmentManager.updateScrubberPosition}
-            // Pass frame stepping handlers
-            onPreviousFrame={handlePreviousFrame}
-            onNextFrame={handleNextFrame}
-            onStartContinuousFrameStep={startContinuousFrameStep}
-            onStopContinuousFrameStep={stopContinuousFrameStep}
-            // Pass unified diamond system props
-            isDiamondDragging={isDiamondDragging}
-            diamondPositions={diamondPositions}
-            onDiamondMouseDown={handleDiamondMouseDown}
-            isSegmentHandleDragging={isSegmentHandleDragging}
-            isSegmentHandlePressed={isSegmentHandlePressed}
-            diamondTime={diamondTime}
-            // Pass touch screen popover props
-            isTouchPopoverVisible={isTouchPopoverVisible}
-            touchPopoverPosition={touchPopoverPosition}
-            onTouchPopoverClose={handleTouchPopoverClose}
-            onTouchAdjustPosition={handleTouchAdjustPosition}
-            onTouchMoveToNearestFrame={handleTouchMoveToNearestFrame}
-            // Pass navigation handler
-            onGoLive={handleGoLive}
-            // Pass X-ray recording check function
-            hasXRayAtTime={hasXRayAtTime}
-            // Pass nearest X-ray frame info
-            nearestXRayInfo={nearestXRayInfo}
-            // Pass segment handle X-ray info for overlay during handle dragging
-            segmentHandleXRayInfo={segmentHandleXRayInfo}
-            segmentHandleTime={segmentHandleTime}
-            // Pass sync playback state
-            isSyncPlaybackEnabled={isSyncPlaybackEnabled}
-          />
+      {(!popupWindow || popupWindow.closed) && (
+        <div style={{ width: 1920 * mainScreenScale, height: 1080 * mainScreenScale }}>
+          <div style={{ transform: `scale(${mainScreenScale})`, transformOrigin: "top left", width: 1920, height: 1080 }}>
+            {renderMainScreen()}
+          </div>
         </div>
       )}
 
@@ -2719,99 +2445,6 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
           {renderMainScreen()}
         </PopupMainScreen>
       )}
-
-      {/* Screen Selection Control - Auto-hide panel */}
-      <div 
-        className="fixed right-0 top-1/2 bg-[#212121] rounded-l-lg p-4 flex flex-col gap-4 transition-transform duration-300 ease-in-out z-50"
-        style={{
-          transform: `translateY(-50%) translateX(${
-            isControlPanelVisible ? '0' : '100%'
-          })`
-        }}
-      >
-        {/* Hide Panel Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log('Close button clicked');
-            setIsControlPanelVisible(false);
-            setManuallyHidden(true);
-          }}
-          className="absolute top-2 right-2 p-1 hover:bg-[rgba(255,255,255,0.1)] rounded transition-colors z-10 cursor-pointer"
-          aria-label="Hide panel"
-          type="button"
-        >
-          <svg className="w-4 h-4 text-[#e8e8e8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        <div className="flex flex-col gap-2">
-          <div className="font-['CentraleSans',_sans-serif] text-white text-[14px] font-medium">Screen View</div>
-          <div className="flex flex-col gap-2">
-            {(["both", "main", "touch"] as const).map((view) => (
-              <button
-                key={view}
-                onClick={() => setScreenView(view)}
-                className={`px-3 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-[13px] transition-colors whitespace-nowrap ${
-                  screenView === view ? "bg-[#1474a4] text-white" : "bg-[rgba(89,89,89,0.55)] text-[#e8e8e8]"
-                }`}
-              >
-                {view === "both" ? "Both" : view === "main" ? "Main" : "Touch"}
-              </button>
-            ))}
-          </div>
-
-          {/* Pop Out Main Screen Button - Only in analysis phase */}
-          {appPhase === "analysis" && (screenView === "both" || screenView === "main") && (
-            <div className="flex flex-col gap-2 border-t border-[rgba(89,89,89,0.55)] pt-4">
-              {!popupWindow || popupWindow.closed ? (
-                <button
-                  onClick={handlePopOutMainScreen}
-                  className="bg-[rgba(89,89,89,0.55)] hover:bg-[rgba(89,89,89,0.75)] px-3 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-[#e8e8e8] text-[13px] transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <div className="relative shrink-0 size-4">
-                    <svg className="block size-full" fill="none" viewBox="0 0 24 24">
-                      <path d="M8 3H5C3.89543 3 3 3.89543 3 5V8M16 3H19C20.1046 3 21 3.89543 21 5V8M8 21H5C3.89543 21 3 20.1046 3 19V16M16 21H19C20.1046 21 21 20.1046 21 19V16M7 12L12 7M12 7L17 12M12 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  Pop Out
-                </button>
-              ) : (
-                <button
-                  onClick={handleClosePopup}
-                  className="bg-[rgba(194,35,31,0.8)] hover:bg-[rgba(194,35,31,0.9)] px-3 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-white text-[13px] transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <div className="relative shrink-0 size-4">
-                    <svg className="block size-full" fill="none" viewBox="0 0 24 24">
-                      <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  Close Popup
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="font-['CentraleSans',_sans-serif] text-[#e8e8e8] text-[14px]">
-            Need to record a pullback?
-          </div>
-          <button
-            onClick={handleGoLive}
-            className="bg-[#7fc242] hover:bg-[#6ba235] px-6 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-white text-[14px] font-medium transition-colors"
-          >
-            Go Live
-          </button>
-          <button
-            onClick={() => setAppPhase("recording")}
-            className="bg-[rgba(194,35,31,0.8)] hover:bg-[rgba(194,35,31,0.9)] px-6 py-2 rounded-sm font-['CentraleSans',_sans-serif] text-white text-[14px] font-medium transition-colors"
-          >
-            Start Recording
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

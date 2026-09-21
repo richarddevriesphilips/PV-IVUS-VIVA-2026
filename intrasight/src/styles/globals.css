@@ -288,14 +288,6 @@ html {
   }
 }
 
-/* DEBUG: Force all buttons to be visible and clickable */
-button {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-}
-
 /* Custom styling for invisible range input overlay */
 input[type="range"] {
   -webkit-appearance: none;

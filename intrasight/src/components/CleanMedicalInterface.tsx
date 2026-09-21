@@ -399,9 +399,12 @@ export default function CleanMedicalInterface({ onGoToLive, recordingDuration }:
     const clickX = e.clientX - rect.left;
     
     // Frame99 has prev button (70px) on left, next button (70px) on right
-    // Usable timeline area is between these buttons
-    const prevButtonWidth = 70;
-    const nextButtonWidth = 70;
+    // Usable timeline area is between these buttons. Those button widths are
+    // design-space (1540px-wide layout) pixels, but rect is on-screen pixels
+    // which may be scaled down by nested CSS transforms - scale them to match.
+    const scale = rect.width / 1540;
+    const prevButtonWidth = 70 * scale;
+    const nextButtonWidth = 70 * scale;
     const usableClickX = clickX - prevButtonWidth;
     const usableWidth = rect.width - prevButtonWidth - nextButtonWidth;
     
@@ -695,7 +698,11 @@ export default function CleanMedicalInterface({ onGoToLive, recordingDuration }:
           zIndex: 100
         }}
       >
-        <NavigationBarIgt />
+        <NavigationBarIgt
+          onScreenshotClick={() => {
+            window.parent.postMessage({ type: "intrasight-screenshot", time: currentTime }, "*");
+          }}
+        />
       </div>
 
       {/* Frame Number - 32px from top bar, positioned based on X-ray visibility - Hide when segment is selected */}

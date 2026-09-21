@@ -5,6 +5,7 @@ import imgPositionTheCatheterV21 from "../assets/89d9cf297aa794e0a11032b0c78f842
 interface LiveMainScreenProps {
   onStartRecording: () => void;
   isSyncPlaybackEnabled: boolean;
+  onToggleSyncPlayback: () => void;
 }
 
 function Icons() {
@@ -82,7 +83,7 @@ function Frame4({ isSyncPlaybackEnabled }: Frame4Props) {
   );
 }
 
-function NavigationBarIgt() {
+function NavigationBarIgt({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   useEffect(() => {
@@ -201,7 +202,12 @@ function NavigationBarIgt() {
               </div>
               
               <div className="box-border content-stretch flex flex-row gap-1 items-center justify-end p-0 relative shrink-0" data-name="Icons">
-                <div className="box-border content-stretch flex flex-row gap-2 items-center justify-center px-3 py-2 relative rounded-sm shrink-0 size-10" data-name="🟢 Button (IGT)">
+                <div
+                  className="box-border content-stretch flex flex-row gap-2 items-center justify-center px-3 py-2 relative rounded-sm shrink-0 size-10 cursor-pointer hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+                  data-name="🟢 Button (IGT)"
+                  onClick={onScreenshotClick}
+                  title="Send screenshot to X-ray Ref"
+                >
                   <div className="relative shrink-0 size-6" data-name="Icon">
                     <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                       <g id="Icon">
@@ -380,7 +386,7 @@ function ToggleSwitch({ isEnabled }: ToggleSwitchProps) {
   );
 }
 
-export function LiveMainScreen({ onStartRecording, isSyncPlaybackEnabled }: LiveMainScreenProps) {
+export function LiveMainScreen({ onStartRecording, isSyncPlaybackEnabled, onToggleSyncPlayback }: LiveMainScreenProps) {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   useEffect(() => {
@@ -410,65 +416,69 @@ export function LiveMainScreen({ onStartRecording, isSyncPlaybackEnabled }: Live
 
   return (
     <div className="bg-[#000000] relative w-[1920px] h-[1080px]" data-name="Live Main Screen">
-      <NavigationBarIgt />
+      <NavigationBarIgt onScreenshotClick={() => window.parent.postMessage({ type: "intrasight-screenshot", time: 0 }, "*")} />
       <Frame4 isSyncPlaybackEnabled={isSyncPlaybackEnabled} />
       <IVUSDisplay isSyncPlaybackEnabled={isSyncPlaybackEnabled} />
       <SideBar />
       <ChromaFlo />
-      
-      {/* Action Buttons */}
-      <div className="absolute left-4 top-[1024px] flex gap-4">
-        <button className="bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px]">
-          <div className="relative shrink-0 size-6">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-              <path d={svgPaths.p28d83c80} fill="#E8E8E8" />
-            </svg>
-          </div>
-          <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
-            <p className="block leading-[22px] whitespace-pre">Save Frame</p>
-          </div>
-        </button>
-        
-        <button className="bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px]">
-          <div className="relative shrink-0 size-6">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-              <path d={svgPaths.pc15d00} fill="#E8E8E8" />
-            </svg>
-          </div>
-          <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
-            <p className="block leading-[22px] whitespace-pre">Freeze</p>
-          </div>
-        </button>
-      </div>
-      
-      {/* Record and Ringdown buttons - aligned to bottom right */}
-      <div className="absolute right-4 top-[1024px] flex gap-4">
-        <button className="bg-[#1474a4] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px]">
-          <div className="relative shrink-0 size-6">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-              <path d={svgPaths.p315022f0} fill="white" />
-            </svg>
-          </div>
-          <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#ffffff] text-[16px] text-left text-nowrap">
-            <p className="block leading-[22px] whitespace-pre">Ringdown</p>
-          </div>
-        </button>
-        
-        <button
-          onClick={onStartRecording}
-          className="bg-[#1474a4] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px] hover:bg-[#1a85b5] transition-colors cursor-pointer"
-        >
-          <div className="relative shrink-0 size-6">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-              <path d={svgPaths.p275e1550} fill="white" />
-            </svg>
-          </div>
-          <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#ffffff] text-[16px] text-left text-nowrap">
-            <p className="block leading-[22px] whitespace-pre">Record</p>
-          </div>
-        </button>
-      </div>
-      
+
+      {/* Action Buttons - positions match the Figma "Boom" (Live) frame exactly */}
+      <button className="absolute left-4 top-[1024px] bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px]">
+        <div className="relative shrink-0 size-6">
+          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <path d={svgPaths.p28d83c80} fill="#E8E8E8" />
+          </svg>
+        </div>
+        <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
+          <p className="block leading-[22px] whitespace-pre">Save Frame</p>
+        </div>
+      </button>
+
+      <button className="absolute left-[1000px] top-[1024px] bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px]">
+        <div className="relative shrink-0 size-6">
+          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <path d={svgPaths.pc15d00} fill="#E8E8E8" />
+          </svg>
+        </div>
+        <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
+          <p className="block leading-[22px] whitespace-pre">Freeze</p>
+        </div>
+      </button>
+
+      <button className="absolute left-[1230px] top-[1024px] bg-[#1474a4] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px]">
+        <div className="relative shrink-0 size-6">
+          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <path d={svgPaths.p315022f0} fill="white" />
+          </svg>
+        </div>
+        <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#ffffff] text-[16px] text-left text-nowrap">
+          <p className="block leading-[22px] whitespace-pre">Ringdown</p>
+        </div>
+      </button>
+
+      <button
+        onClick={onStartRecording}
+        className="absolute left-[1460px] top-[1024px] bg-[#1474a4] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm w-[214px] hover:bg-[#1a85b5] transition-colors cursor-pointer"
+      >
+        <div className="relative shrink-0 size-6">
+          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+            <path d={svgPaths.p275e1550} fill="white" />
+          </svg>
+        </div>
+        <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#ffffff] text-[16px] text-left text-nowrap">
+          <p className="block leading-[22px] whitespace-pre">Record</p>
+        </div>
+      </button>
+
+      <button
+        onClick={onToggleSyncPlayback}
+        className="absolute left-[1690px] top-[1024px] bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-3 items-center justify-center pl-4 pr-3 py-2 rounded-sm w-[214px] cursor-pointer"
+      >
+        <ToggleSwitch isEnabled={isSyncPlaybackEnabled} />
+        <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
+          <p className="block leading-[22px] whitespace-pre">Sync Playback</p>
+        </div>
+      </button>
     </div>
   );
 }

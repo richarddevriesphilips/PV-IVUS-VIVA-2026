@@ -57,7 +57,7 @@ export default function App() {
   }, []);
   
   return (
-    <div ref={containerRef} className="w-full h-full bg-gray-500 overflow-hidden flex items-center justify-center">
+    <div ref={containerRef} className="w-full h-full bg-black overflow-hidden flex items-start justify-start">
       <div 
         style={{ 
           width: `${1920 * scale}px`,

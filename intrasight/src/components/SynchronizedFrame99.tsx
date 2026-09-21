@@ -106,7 +106,11 @@ function SynchronizedScrubber({
     if (!timelineRef.current) return null;
     
     const rect = timelineRef.current.getBoundingClientRect();
-    const mouseX = moveE.clientX - rect.left;
+    // rect is in on-screen pixels, which may be scaled down by nested CSS
+    // transforms; normalize back to the 1540px design space before applying
+    // the hardcoded offsets below so the scrubber tracks the real cursor.
+    const scale = rect.width / 1540;
+    const mouseX = (moveE.clientX - rect.left) / scale;
     
     // Calculate position within usable area (excluding prev/next buttons)
     const relativeX = mouseX - startOffset;
@@ -179,7 +183,11 @@ export default function SynchronizedFrame99({ currentTime, videoDuration, onTime
     if (!timelineRef.current) return null;
     
     const rect = timelineRef.current.getBoundingClientRect();
-    const mouseX = moveE.clientX - rect.left;
+    // rect is in on-screen pixels, which may be scaled down by nested CSS
+    // transforms; normalize back to the 1540px design space before applying
+    // the hardcoded offsets below so the scrubber tracks the real cursor.
+    const scale = rect.width / 1540;
+    const mouseX = (moveE.clientX - rect.left) / scale;
     
     // Calculate position within usable area (excluding prev/next buttons)
     const usableWidth = 1400;

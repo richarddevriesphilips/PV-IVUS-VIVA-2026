@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { APP_CONSTANTS } from './constants/appConstants';
 
 interface IVUSFramePlayerProps {
   currentTime: number; // Current time in seconds
@@ -21,12 +22,12 @@ export function IVUSFramePlayer({
 }: IVUSFramePlayerProps) {
   const canvasRef = useRef(null as HTMLCanvasElement | null);
   const [framesLoaded, setFramesLoaded] = useState(false);
-  const [totalFrames, setTotalFrames] = useState(780); // 26s * 30fps
+  const [totalFrames, setTotalFrames] = useState(APP_CONSTANTS.DURATION * 30);
   const frameCache = useRef(new Map() as Map<number, HTMLImageElement>);
   const loadingQueue = useRef(new Set() as Set<number>);
   
   const FPS = 30;
-  const DURATION = 26;
+  const DURATION = APP_CONSTANTS.DURATION;
   const PRELOAD_RANGE = 10; // Preload frames ahead and behind
 
   /**
