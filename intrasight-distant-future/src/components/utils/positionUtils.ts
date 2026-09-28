@@ -2,11 +2,19 @@ import { IndicatorPosition } from '../types';
 import { APP_CONSTANTS, RULER_PATH_DATA } from '../constants/appConstants';
 
 export class PositionUtils {
+  private static xrayDuration = APP_CONSTANTS.DURATION;
+
+  static setXRayDuration(duration: number): void {
+    if (Number.isFinite(duration) && duration > 0) {
+      PositionUtils.xrayDuration = duration;
+    }
+  }
+
   /**
    * Calculate diamond indicator position along the virtual ruler path
    */
   static getMainScreenIndicatorPosition(time: number): IndicatorPosition {
-    const progress = Math.min(time / APP_CONSTANTS.DURATION, 1);
+    const progress = Math.max(0, Math.min(time / PositionUtils.xrayDuration, 1));
 
     // Find the two points to interpolate between
     let lowerPoint = RULER_PATH_DATA[0];

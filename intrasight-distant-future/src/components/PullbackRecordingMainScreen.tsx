@@ -14,6 +14,7 @@ interface PullbackRecordingMainScreenProps {
   getBookmarkButtonText: (position: number) => string;
   onXRayRecordingStart?: (currentRecordingTime: number) => void;
   onXRayRecordingStop?: (currentRecordingTime: number) => void;
+  onXRayDurationChange?: (duration: number) => void;
   isSyncPlaybackEnabled?: boolean;
   xraySrc: string;
   ivusSrc: string;
@@ -238,6 +239,7 @@ export function PullbackRecordingMainScreen({
   getBookmarkButtonText,
   onXRayRecordingStart,
   onXRayRecordingStop,
+  onXRayDurationChange,
   isSyncPlaybackEnabled = true,
   xraySrc,
   ivusSrc
@@ -436,6 +438,7 @@ export function PullbackRecordingMainScreen({
             className="object-cover"
             style={{ width: '820px', height: '740px' }}
             src={xraySrc}
+            onLoadedMetadata={(event) => onXRayDurationChange?.(event.currentTarget.duration)}
             muted
             playsInline
             preload="auto"

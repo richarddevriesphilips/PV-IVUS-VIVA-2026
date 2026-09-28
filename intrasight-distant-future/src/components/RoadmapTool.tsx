@@ -21,6 +21,34 @@ const VIDEO_HEIGHT = 796;
 const DURATION = APP_CONSTANTS.DURATION;
 const NUM_POINTS = RULER_PATH_DATA_RIGHT.length; // 16 fixed checkpoints, evenly spaced by progress
 
+function formatVideoTime(time: number): string {
+  const totalSeconds = Math.max(0, Math.floor(time));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function interpolatePath(points: RulerPathPoint[], progress: number): { x: number; y: number } {
+  const clampedProgress = Math.max(0, Math.min(progress, 1));
+  if (clampedProgress <= points[0].progress) return points[0];
+  if (clampedProgress >= points[points.length - 1].progress) return points[points.length - 1];
+
+  for (let index = 0; index < points.length - 1; index++) {
+    const lower = points[index];
+    const upper = points[index + 1];
+    if (clampedProgress <= upper.progress) {
+      const span = upper.progress - lower.progress;
+      const t = span === 0 ? 0 : (clampedProgress - lower.progress) / span;
+      return {
+        x: lower.x + (upper.x - lower.x) * t,
+        y: lower.y + (upper.y - lower.y) * t,
+      };
+    }
+  }
+
+  return points[points.length - 1];
+}
+
 // Inline hex colors instead of Tailwind color utilities: this file lives under
 // intrasight-distant-future/src, which isn't covered by the root app's
 // restricted `@source '../**/*.{js,ts,jsx,tsx}'` in src/styles/tailwind.css -
@@ -61,6 +89,7 @@ export function RoadmapTool() {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(DURATION);
   const [copied, setCopied] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -72,11 +101,12 @@ export function RoadmapTool() {
     setOffset({ ...(nextLeg === 'right' ? INDICATOR_OFFSETS_RIGHT : INDICATOR_OFFSETS_LEFT) });
     setSelectedIndex(0);
     setCurrentTime(0);
+    setVideoDuration(DURATION);
     setCopied(false);
   };
 
   const seekTo = (time: number) => {
-    const clamped = Math.max(0, Math.min(time, DURATION));
+    const clamped = Math.max(0, Math.min(time, videoDuration));
     setCurrentTime(clamped);
     if (videoRef.current) {
       try {
@@ -89,7 +119,7 @@ export function RoadmapTool() {
 
   const selectCheckpoint = (index: number) => {
     setSelectedIndex(index);
-    seekTo(points[index].progress * DURATION);
+    seekTo(points[index].progress * videoDuration);
   };
 
   const togglePlay = () => {
@@ -160,6 +190,11 @@ export function RoadmapTool() {
     return `M ${points.map((p) => `${offset.x + p.x},${offset.y + p.y}`).join(' L ')}`;
   }, [points, offset]);
 
+  const currentProgress = videoDuration > 0 ? Math.min(currentTime / videoDuration, 1) : 0;
+  const playhead = interpolatePath(points, currentProgress);
+  const playheadX = offset.x + playhead.x;
+  const playheadY = offset.y + playhead.y;
+
   const exportCode = useMemo(() => {
     const constName = leg === 'right' ? 'RULER_PATH_DATA_RIGHT' : 'RULER_PATH_DATA_LEFT';
     const offsetName = leg === 'right' ? 'INDICATOR_OFFSETS_RIGHT' : 'INDICATOR_OFFSETS_LEFT';
@@ -195,7 +230,12 @@ export function RoadmapTool() {
               muted
               playsInline
               preload="auto"
+              onLoadedMetadata={(e) => {
+                const duration = e.currentTarget.duration;
+                if (Number.isFinite(duration) && duration > 0) setVideoDuration(duration);
+              }}
               onTimeUpdate={(e) => setCurrentTime((e.target as HTMLVideoElement).currentTime)}
+              onEnded={() => setIsPlaying(false)}
             />
             <svg
               className="absolute inset-0 pointer-events-none"
@@ -228,16 +268,20 @@ export function RoadmapTool() {
                       style={{ pointerEvents: 'none' }}
                     />
                     <text x={x} y={y - 14} fill="white" fontSize={11} textAnchor="middle" style={{ pointerEvents: 'none' }}>
-                      {Math.round(p.progress * 100)}%
+                      {formatVideoTime(p.progress * videoDuration)}
                     </text>
                   </g>
                 );
               })}
+              <g style={{ pointerEvents: 'none' }}>
+                <circle cx={playheadX} cy={playheadY} r={14} fill={COLOR.bg950} stroke="#38bdf8" strokeWidth={3} />
+                <circle cx={playheadX} cy={playheadY} r={4} fill="#38bdf8" />
+              </g>
             </svg>
           </div>
 
           {/* Transport controls */}
-          <div className="w-full flex items-center gap-3" style={{ width: VIDEO_WIDTH }}>
+          <div className="w-full flex items-center gap-3 rounded px-3 py-2" style={{ width: VIDEO_WIDTH, backgroundColor: COLOR.bg900 }}>
             <button
               onClick={togglePlay}
               className="px-3 py-1.5 rounded text-sm font-semibold"
@@ -245,17 +289,20 @@ export function RoadmapTool() {
             >
               {isPlaying ? 'Pause' : 'Play'}
             </button>
+            <span className="text-xs font-mono" style={{ color: COLOR.neutral400 }}>{formatVideoTime(currentTime)}</span>
             <input
               type="range"
               min={0}
-              max={DURATION}
-              step={0.01}
+              max={videoDuration}
+              step={0.1}
               value={currentTime}
               onChange={(e) => seekTo(Number(e.target.value))}
-              className="flex-1"
+              className="flex-1 cursor-pointer"
+              aria-label="Scrub X-ray video"
+              style={{ accentColor: COLOR.blue }}
             />
-            <span className="text-xs w-16 text-right" style={{ color: COLOR.neutral400 }}>
-              {currentTime.toFixed(1)}s / {DURATION}s
+            <span className="text-xs font-mono" style={{ color: COLOR.neutral400 }}>
+              {formatVideoTime(videoDuration)}
             </span>
           </div>
 
@@ -299,7 +346,7 @@ export function RoadmapTool() {
         </div>
 
         <div>
-          <div className="text-xs uppercase mb-2" style={{ color: COLOR.neutral500 }}>Checkpoints (progress along pullback)</div>
+          <div className="text-xs uppercase mb-2" style={{ color: COLOR.neutral500 }}>Checkpoints (video time)</div>
           <div className="grid grid-cols-4 gap-1.5">
             {points.map((p, index) => (
               <button
@@ -308,14 +355,14 @@ export function RoadmapTool() {
                 className="py-1.5 rounded text-xs font-mono"
                 style={{ backgroundColor: index === selectedIndex ? COLOR.red : COLOR.bg800, color: 'white' }}
               >
-                {Math.round(p.progress * 100)}%
+                {formatVideoTime(p.progress * videoDuration)}
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <div className="text-xs uppercase mb-2" style={{ color: COLOR.neutral500 }}>Selected point ({Math.round(points[selectedIndex].progress * 100)}%)</div>
+          <div className="text-xs uppercase mb-2" style={{ color: COLOR.neutral500 }}>Selected point ({formatVideoTime(points[selectedIndex].progress * videoDuration)})</div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <label className="flex flex-col gap-1">
               x

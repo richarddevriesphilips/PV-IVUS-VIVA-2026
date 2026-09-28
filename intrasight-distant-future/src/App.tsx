@@ -124,6 +124,7 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(APP_CONSTANTS.DURATION);
+  const [, setXRayDuration] = useState(APP_CONSTANTS.DURATION);
   const [scrubberPosition, setScrubberPosition] = useState(() => 
     PositionUtils.timeToScrubberPosition(0) // Initialize based on time 0
   );
@@ -1426,8 +1427,16 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     };
   }, [manuallyHidden]);
 
-  const handleVideoMetadataLoaded = () => {
+  const handleXRayDurationChange = (xrayDuration: number) => {
+    PositionUtils.setXRayDuration(xrayDuration);
+    setXRayDuration(xrayDuration);
+  };
+
+  const handleVideoMetadataLoaded = (event: React.SyntheticEvent<HTMLVideoElement>) => {
     console.log('Video metadata loaded, count:', videosLoaded + 1);
+    if (event.currentTarget === preloadLeftVideoRef.current || event.currentTarget === preloadTouchLeftVideoRef.current) {
+      handleXRayDurationChange(event.currentTarget.duration);
+    }
     setVideosLoaded((prev) => prev + 1);
     setDuration(APP_CONSTANTS.DURATION);
   };
@@ -1455,6 +1464,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
                 ref={leftVideoRef}
                 className="absolute h-[796px] left-0 top-0 w-[718px] object-cover"
                 src={videoSources.xray}
+                onLoadedMetadata={(event) => handleXRayDurationChange(event.currentTarget.duration)}
                 preload="auto"
                 muted
                 playsInline
@@ -2434,6 +2444,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               getBookmarkButtonText={bookmarkManager.getBookmarkButtonText}
               onXRayRecordingStart={handleXRayRecordingStart}
               onXRayRecordingStop={handleXRayRecordingStop}
+              onXRayDurationChange={handleXRayDurationChange}
               isSyncPlaybackEnabled={isSyncPlaybackEnabled}
               xraySrc={videoSources.xray}
               ivusSrc={videoSources.ivus}
