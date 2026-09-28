@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   commitBorderEdit,
   getBorderPolygons,
@@ -7,56 +7,18 @@ import {
   type Point,
   REFERENCE_SIZE,
 } from '../utils/ivusBorders';
+import { MIN_EDIT_POINTS, editableHandles } from '../utils/borderGeometry';
 
 // ---------------------------------------------------------------------------
 // Editing tunables (all in 720-space pixels)
 // ---------------------------------------------------------------------------
 
-/** Minimum number of handles a polygon must keep during editing. */
-const MIN_EDIT_POINTS = 4;
-/** Perpendicular-distance threshold for simplifying on enter-edit.
- *  Points contributing less curvature than this get dropped. */
-const SIMPLIFY_EPSILON = 3.5;
 /** If a dragged dot ends up closer than this to a neighbor, the dot is deleted. */
 const MERGE_DELETE_DISTANCE = 16;
 
 // ---------------------------------------------------------------------------
 // Polygon-edit geometry helpers
 // ---------------------------------------------------------------------------
-
-function perpDistanceToLine(p: Point, a: Point, b: Point): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < 1e-9) return Math.hypot(p.x - a.x, p.y - a.y);
-  return Math.abs((dy * p.x - dx * p.y + b.x * a.y - b.y * a.x) / len);
-}
-
-/**
- * Iteratively drop the point that contributes the least curvature (smallest
- * perpendicular distance from the segment through its neighbors), stopping
- * when removing the next point would exceed `epsilon` or we'd fall below
- * `minPts`.  Operates on a CLOSED polygon.
- */
-function simplifyClosedPolygon(points: Point[], epsilon: number, minPts: number): Point[] {
-  const pts = points.map((p) => ({ ...p }));
-  while (pts.length > minPts) {
-    let minDev = Infinity;
-    let minIdx = -1;
-    for (let i = 0; i < pts.length; i++) {
-      const prev = pts[(i - 1 + pts.length) % pts.length];
-      const next = pts[(i + 1) % pts.length];
-      const d = perpDistanceToLine(pts[i], prev, next);
-      if (d < minDev) {
-        minDev = d;
-        minIdx = i;
-      }
-    }
-    if (minDev > epsilon || minIdx < 0) break;
-    pts.splice(minIdx, 1);
-  }
-  return pts;
-}
 
 /** Project `p` onto segment a-b, clamped to [0,1].  Returns the projection and the perpendicular distance. */
 function projectOntoSegment(p: Point, a: Point, b: Point): { proj: Point; dist: number } {
@@ -112,6 +74,11 @@ interface IVUSMeasurementOverlayProps {
 
 type EditTarget = 'lumen' | 'vessel' | null;
 
+/** Imperative handle for callers that need to force-commit an in-progress edit (e.g. before reading getBorderPolygons or navigating away). */
+export interface IVUSMeasurementOverlayHandle {
+  commitPendingEdits: () => void;
+}
+
 /**
  * Renders the lumen (blue) and vessel (green) boundaries on top of an
  * IVUS frame, using keyframe-traced ellipses from `ivusBorders.ts`.
@@ -121,11 +88,11 @@ type EditTarget = 'lumen' | 'vessel' | null;
  *   - Drag the control points to reshape it.
  *   - Click the "Done" button to confirm and exit edit mode.
  */
-export function IVUSMeasurementOverlay({
+export const IVUSMeasurementOverlay = forwardRef<IVUSMeasurementOverlayHandle, IVUSMeasurementOverlayProps>(function IVUSMeasurementOverlay({
   frameNumber = 0,
   containerSize = 350,
   interactive = false,
-}: IVUSMeasurementOverlayProps) {
+}, ref) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const [editing, setEditing] = useState<EditTarget>(null);
@@ -178,14 +145,13 @@ export function IVUSMeasurementOverlay({
 
   const enterEdit = (target: EditTarget) => {
     if (!interactive || target === null) return;
-    // Seed the in-progress polygon from whatever's currently being rendered,
-    // simplified down to as few handles as faithfully represent the shape.
-    // Users can add more by clicking on the line, or delete by dragging onto a neighbor.
+    // Seed the in-progress polygon from whatever's currently being rendered.
+    // Users can add handles by clicking on the line, or delete by dragging onto a neighbor.
     if (target === 'lumen' && !editLumen) {
-      setEditLumen(simplifyClosedPolygon(storePolys.lumen, SIMPLIFY_EPSILON, MIN_EDIT_POINTS));
+      setEditLumen(editableHandles(storePolys.lumen));
     }
     if (target === 'vessel' && !editVessel) {
-      setEditVessel(simplifyClosedPolygon(storePolys.vessel, SIMPLIFY_EPSILON, MIN_EDIT_POINTS));
+      setEditVessel(editableHandles(storePolys.vessel));
     }
     setEditing(target);
   };
@@ -213,6 +179,10 @@ export function IVUSMeasurementOverlay({
     setEditVessel(null);
     setDraggingIndex(null);
   };
+
+  useImperativeHandle(ref, () => ({
+    commitPendingEdits: commitAndExit,
+  }));
 
   const toLocalCoords = useCallback((clientX: number, clientY: number): Point | null => {
     const svg = svgRef.current;
@@ -435,5 +405,5 @@ export function IVUSMeasurementOverlay({
       )}
     </svg>
   );
-}
+});
 

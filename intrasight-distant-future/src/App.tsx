@@ -20,12 +20,13 @@ import SegmentButton from "./imports/SegmentButton";
 import popoverSvgPaths from "./imports/svg-626nhpiffb";
 import { IVUSMeasurementOverlay } from "./components/IVUSMeasurementOverlay";
 import { ILDPathOverlay } from "./components/ILDPathOverlay";
+import { DeployAssistScreen } from "./components/DeployAssistScreen";
 
 // Import utilities and hooks
-import { APP_CONSTANTS } from "./components/constants/appConstants";
+import { APP_CONSTANTS, Leg, setActiveLeg } from "./components/constants/appConstants";
 import { BookmarkData, ConfirmedSegment, ScreenView, VideoRefs } from "./components/types";
 
-type AppPhase = "live" | "recording" | "analysis";
+type AppPhase = "live" | "recording" | "analysis" | "deployAssist";
 
 // X-ray recording interval type
 interface XRayInterval {
@@ -33,8 +34,9 @@ interface XRayInterval {
   end: number;   // End time in seconds
 }
 import { WaveformUtils } from "./components/utils/waveformUtils";
-import { subscribeToBorderEdits } from "./utils/ivusBorders";
+import { subscribeToBorderEdits, setActiveBorderLeg } from "./utils/ivusBorders";
 import { PositionUtils } from "./components/utils/positionUtils";
+import { SegmentUtils } from "./components/utils/segmentUtils";
 import { useVideoManager } from "./components/hooks/useVideoManager";
 import { useBookmarkManager } from "./components/hooks/useBookmarkManager";
 import { useSegmentManager } from "./components/hooks/useSegmentManager";
@@ -44,12 +46,22 @@ import svgPaths from "./imports/svg-htfrh24qmy";
 import segmentSvgPaths from "./imports/svg-u67og6v0lz";
 import rulerSvgPaths from "./imports/svg-rnfs0zgsud";
 
-// Video sources for different phases
-const VIDEO_SOURCES = {
-  'IVUS-recording-export.mp4': '/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4',
-  'postrecord.mov': '/intrasight-distant-future/assets/videos/postrecord.mov',
-  xray: '/intrasight-distant-future/assets/videos/postrecord.mov',
-  ivus: '/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4'
+// Video sources, per leg. The first pullback in a session uses the Right Leg
+// assets; pressing "Live" afterwards switches to the Left Leg (and back again
+// on the next "Live" press), per the current demo script.
+const LEG_VIDEO_SOURCES: Record<Leg, { xray: string; ivus: string; liveIvus: string; ivusFramesDir: string }> = {
+  right: {
+    xray: '/intrasight-distant-future/assets/videos/fluoro-right-leg.mov',
+    ivus: '/intrasight-distant-future/assets/videos/ivus-right-leg.mp4',
+    liveIvus: '/intrasight-distant-future/assets/videos/ivus-live-right-leg.mov',
+    ivusFramesDir: '/intrasight-distant-future/assets/ivus-frames-right-leg',
+  },
+  left: {
+    xray: '/intrasight-distant-future/assets/videos/fluoro-left-leg.mp4',
+    ivus: '/intrasight-distant-future/assets/videos/ivus-left-leg.mp4',
+    liveIvus: '/intrasight-distant-future/assets/videos/ivus-live-left-leg.mov',
+    ivusFramesDir: '/intrasight-distant-future/assets/ivus-frames',
+  },
 };
 
 // Helper function to calculate lumen diameter from frame number
@@ -101,7 +113,13 @@ function calculateVesselDiameter(frame: number): number {
 export default function App() {
   // Application phase state
   const [appPhase, setAppPhase] = useState<AppPhase>("live");
-  
+
+  // Which leg's assets/roadmap are active. The first pullback in a session
+  // uses the Right Leg; pressing "Live" afterwards switches to the Left Leg
+  // (and toggles back on each subsequent "Live" press).
+  const [leg, setLeg] = useState<Leg>("right");
+  const videoSources = LEG_VIDEO_SOURCES[leg];
+
   // Core application state
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -179,6 +197,13 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   const touchRightVideoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
+  // Let the outer FlexVision shell know which leg's assets are active as soon
+  // as Intrasight mounts (the first pullback is always the Right Leg).
+  useEffect(() => {
+    window.parent.postMessage({ type: "intrasight-leg", leg }, "*");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Broadcast spacebar (fluoro pedal) to parent in all phases
   // Use capture phase so this fires before any component handlers
   useEffect(() => {
@@ -215,6 +240,11 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   const videoManager = useVideoManager(videoRefs);
   const bookmarkManager = useBookmarkManager();
   const segmentManager = useSegmentManager();
+
+  // Snapshot of each completed pullback's segments/bookmarks, keyed by leg -
+  // captured in handleGoLive right before resetBookmarks/resetSegments wipes
+  // the in-progress state, so Deploy Assist can still show prior pullbacks.
+  const [pullbackHistory, setPullbackHistory] = useState<Partial<Record<Leg, { segments: ConfirmedSegment[]; bookmarks: BookmarkData[] }>>>({});
 
   // Computed values
   // Re-generate waveform data when borders are edited so the ILD stays in sync.
@@ -300,6 +330,21 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
       return String.fromCharCode(64 + nextLabelNumber);
     }
   }, [segmentManager.editingSegmentId, segmentManager.originalSegmentData, segmentManager.confirmedSegments.length]);
+
+  // Pullbacks to show on the Deploy Assist screen: the leg currently being
+  // analyzed (live data) plus any previously completed leg's snapshot.
+  const deployAssistPullbacks = useMemo(() => {
+    const legOrder: Leg[] = ["right", "left"];
+    return legOrder.reduce<{ leg: Leg; label: string; segments: ConfirmedSegment[]; bookmarks: BookmarkData[] }[]>((acc, l) => {
+      const snapshot = l === leg
+        ? { segments: segmentManager.confirmedSegments, bookmarks: bookmarkManager.bookmarks }
+        : pullbackHistory[l];
+      if (snapshot) {
+        acc.push({ leg: l, label: l === "right" ? "Right Leg" : "Left Leg", segments: snapshot.segments, bookmarks: snapshot.bookmarks });
+      }
+      return acc;
+    }, []);
+  }, [leg, segmentManager.confirmedSegments, bookmarkManager.bookmarks, pullbackHistory]);
 
   // Calculate loading progress
   const loadingProgress = (videosLoaded / 4) * 100;
@@ -394,11 +439,26 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     // Reset X-ray recording intervals
     setXrayIntervals([]);
     xrayRecordingStartTimeRef.current = null;
-    
+
+    // Snapshot this pullback's annotations before they're cleared, so Deploy
+    // Assist can still show them after switching to the other leg.
+    setPullbackHistory((prev) => ({
+      ...prev,
+      [leg]: { segments: segmentManager.confirmedSegments, bookmarks: bookmarkManager.bookmarks },
+    }));
+
     // Reset bookmarks and segments
     bookmarkManager.resetBookmarks();
     segmentManager.resetSegments();
-    
+
+    // Switch legs: first pullback is the Right Leg, every "Live" press afterwards
+    // alternates to the other leg's assets, catheter roadmap, and IVUS borders.
+    const nextLeg: Leg = leg === "right" ? "left" : "right";
+    setActiveLeg(nextLeg);
+    setActiveBorderLeg(nextLeg);
+    setLeg(nextLeg);
+    window.parent.postMessage({ type: "intrasight-leg", leg: nextLeg }, "*");
+
     // Transition to live phase
     setAppPhase("live");
     window.parent.postMessage({ type: "intrasight-phase", phase: "live" }, "*");
@@ -490,17 +550,15 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     const leftTime = Math.max(0, Math.min(leftPercentage * APP_CONSTANTS.DURATION, APP_CONSTANTS.DURATION));
     const rightTime = Math.max(0, Math.min(rightPercentage * APP_CONSTANTS.DURATION, APP_CONSTANTS.DURATION));
     
-    // Check if both handles are in X-ray areas
-    const leftHasXRay = hasXRayAtTime(leftTime);
-    const rightHasXRay = hasXRayAtTime(rightTime);
-    
-    if (!leftHasXRay || !rightHasXRay) {
-      return "";
+    // When the whole segment has recorded X-ray coverage, use the precise curved path length.
+    // Otherwise fall back to the straight pixel-to-mm estimate so a length is always shown
+    // while creating/editing a segment (matches near-future's always-visible length).
+    if (hasXRayAtTime(leftTime) && hasXRayAtTime(rightTime)) {
+      const pathLengthMm = PositionUtils.calculateXRayPathLength(leftTime, rightTime);
+      return pathLengthMm.toFixed(1);
     }
-    
-    // Both handles are in X-ray areas, calculate length based on actual curved X-ray path
-    const pathLengthMm = PositionUtils.calculateXRayPathLength(leftTime, rightTime);
-    return pathLengthMm.toFixed(1);
+
+    return SegmentUtils.calculateSegmentLength(width);
   }, [hasXRayAtTime]);
 
   // Event handlers
@@ -1396,7 +1454,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               <video
                 ref={leftVideoRef}
                 className="absolute h-[796px] left-0 top-0 w-[718px] object-cover"
-                src={VIDEO_SOURCES.xray}
+                src={videoSources.xray}
                 preload="auto"
                 muted
                 playsInline
@@ -1996,7 +2054,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               <video
                 ref={rightVideoRef}
                 className="absolute left-0 size-[664.617px] top-0 object-cover rounded-full"
-                src={VIDEO_SOURCES.ivus}
+                src={videoSources.ivus}
                 preload="auto"
                 muted
                 playsInline
@@ -2017,6 +2075,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
                 segmentLeftTime={((segmentManager.segmentLeft - APP_CONSTANTS.MAIN_SCREEN.ILD_LEFT_BOUNDARY) / APP_CONSTANTS.MAIN_SCREEN.ILD_USABLE_WIDTH) * APP_CONSTANTS.DURATION}
                 segmentRightTime={((segmentManager.segmentLeft + segmentManager.segmentWidth - APP_CONSTANTS.MAIN_SCREEN.ILD_LEFT_BOUNDARY) / APP_CONSTANTS.MAIN_SCREEN.ILD_USABLE_WIDTH) * APP_CONSTANTS.DURATION}
                 middleFrameTime={((segmentManager.middleHandlePosition - APP_CONSTANTS.MAIN_SCREEN.ILD_LEFT_BOUNDARY) / APP_CONSTANTS.MAIN_SCREEN.ILD_USABLE_WIDTH) * APP_CONSTANTS.DURATION}
+                ivusFramesDir={videoSources.ivusFramesDir}
               />
             </div>
           )}
@@ -2194,6 +2253,21 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               <p className="block leading-[22px] whitespace-pre">{isPlaying ? "Pause" : "Playback"}</p>
             </div>
           </button>
+          <button
+            onClick={() => setAppPhase("deployAssist")}
+            className="bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm text-[#e8e8e8] w-[214px]"
+          >
+            <div className="relative shrink-0 size-6">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" stroke="#E8E8E8" strokeWidth="2" />
+                <circle cx="12" cy="12" r="4" stroke="#E8E8E8" strokeWidth="2" />
+                <circle cx="12" cy="12" r="1" fill="#E8E8E8" />
+              </svg>
+            </div>
+            <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
+              <p className="block leading-[22px] whitespace-pre">Deploy Assist</p>
+            </div>
+          </button>
           <button 
             onClick={handleGoLive}
             className="bg-[#1474a4] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm text-white w-[214px] hover:bg-[#1a85b5] transition-colors cursor-pointer"
@@ -2337,6 +2411,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               onStartRecording={handleStartRecording}
               isSyncPlaybackEnabled={isSyncPlaybackEnabled}
               onToggleSyncPlayback={() => setIsSyncPlaybackEnabled((enabled) => !enabled)}
+              liveIvusSrc={videoSources.liveIvus}
             />
           </div>
         </div>
@@ -2360,6 +2435,26 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               onXRayRecordingStart={handleXRayRecordingStart}
               onXRayRecordingStop={handleXRayRecordingStop}
               isSyncPlaybackEnabled={isSyncPlaybackEnabled}
+              xraySrc={videoSources.xray}
+              ivusSrc={videoSources.ivus}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show Deploy Assist screen - lets the user pick which completed
+  // pullback(s) to overlay on a spacebar-gated live X-ray feed.
+  if (appPhase === "deployAssist") {
+    return (
+      <div ref={mainScreenContainerRef} className="w-full h-full overflow-hidden bg-black flex items-start justify-start">
+        <div style={{ width: 1920 * mainScreenScale, height: 1080 * mainScreenScale }}>
+          <div style={{ transform: `scale(${mainScreenScale})`, transformOrigin: "top left", width: 1920, height: 1080 }}>
+            <DeployAssistScreen
+              pullbacks={deployAssistPullbacks}
+              onBackToIVUS={() => setAppPhase("analysis")}
+              onGoLive={handleGoLive}
             />
           </div>
         </div>
@@ -2375,7 +2470,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
         <div className="absolute -left-[9999px] -top-[9999px] opacity-0 pointer-events-none">
           <video
             ref={preloadLeftVideoRef}
-            src={VIDEO_SOURCES.xray}
+            src={videoSources.xray}
             className="w-full h-full"
             onLoadedMetadata={handleVideoMetadataLoaded}
             onError={handlePreloadVideoError}
@@ -2385,7 +2480,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
           />
           <video
             ref={preloadRightVideoRef}
-            src={VIDEO_SOURCES.ivus}
+            src={videoSources.ivus}
             className="w-full h-full"
             onLoadedMetadata={handleVideoMetadataLoaded}
             onError={handlePreloadVideoError}
@@ -2395,7 +2490,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
           />
           <video
             ref={preloadTouchLeftVideoRef}
-            src={VIDEO_SOURCES.xray}
+            src={videoSources.xray}
             className="w-full h-full"
             onLoadedMetadata={handleVideoMetadataLoaded}
             onError={handlePreloadVideoError}
@@ -2405,7 +2500,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
           />
           <video
             ref={preloadTouchRightVideoRef}
-            src={VIDEO_SOURCES.ivus}
+            src={videoSources.ivus}
             className="w-full h-full"
             onLoadedMetadata={handleVideoMetadataLoaded}
             onError={handlePreloadVideoError}

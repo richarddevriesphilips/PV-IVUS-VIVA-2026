@@ -1,53 +1,43 @@
 /**
- * IVUS border data + math.
+ * IVUS lumen/vessel borders: resolution, measurements and editing.
  *
- * Keyframes are based on manually-traced lumen/vessel boundaries from the
- * annotated frames in `public/assets/ivus-frames/*-annotated.jpg`.
- * Between keyframes we smoothly interpolate every parameter.
+ * Border source per frame, in priority order:
+ *   1. Session edits made in the analysis screen (commitBorderEdit)
+ *   2. Expert keyframes (data/borderKeyframes.ts) - absolute truth, exactly as traced
+ *   3. Per-frame annotations (data/ivus-annotations-*.json, from
+ *      `npm run annotate-borders`) - only while the keyframes they were
+ *      generated from are unchanged around that frame
+ *   4. Live shape interpolation between the current keyframes
  *
- * Coordinate space:
- *   - All ellipse positions / sizes are stored relative to a 720x720 reference image
- *     (matches the natural size of the extracted IVUS frames).
- *   - Consumers scale these to whatever container size they use.
- *   - PIXELS_PER_MM converts pixel measurements (in 720-space) to millimeters.
- *
- * Edited (user-modified) borders are represented as polygons (arrays of points)
- * that replace the interpolated ellipse for a single frame range.
+ * Coordinates are in a 720x720 display space of the (cover-cropped) IVUS
+ * frame; consumers scale to their container. Measurements are always taken on
+ * the smooth rendered border (see smoothPolygon), not the raw handle polygon.
+ * Interpolated and edited borders are kept around the catheter (coverDisc).
  */
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import type { Leg } from '../components/constants/appConstants';
+import { BORDER_POLYGON_KEYFRAMES_LEFT, BORDER_POLYGON_KEYFRAMES_RIGHT } from '../data/borderKeyframes';
+import annotationsLeft from '../data/ivus-annotations-left.json';
+import annotationsRight from '../data/ivus-annotations-right.json';
+import {
+  type BorderPolygons,
+  type Point,
+  CATHETER_AREA_RADIUS,
+  VESSEL_CATHETER_AREA_RADIUS,
+  bestAlignment,
+  bracketFrames,
+  clonePolygons,
+  coverDisc,
+  interpolateKeyframes,
+  keyframeChecksum,
+  keyframesToMap,
+  polygonAreaPx,
+  resamplePolygonByArcLength,
+  smoothPolygon,
+} from './borderGeometry';
 
-export interface EllipseShape {
-  /** Center X in 720-space */
-  cx: number;
-  /** Center Y in 720-space */
-  cy: number;
-  /** Half-width along x-axis (before rotation), in 720-space */
-  rx: number;
-  /** Half-height along y-axis (before rotation), in 720-space */
-  ry: number;
-  /** Rotation in degrees around (cx, cy) */
-  rot: number;
-}
-
-export interface BorderKeyframe {
-  frame: number;
-  lumen: EllipseShape;
-  vessel: EllipseShape;
-}
-
-export interface Point {
-  x: number;
-  y: number;
-}
-
-export interface BorderShapes {
-  /** Current lumen shape — either an ellipse or an edited polygon (in 720-space) */
-  lumen: EllipseShape;
-  vessel: EllipseShape;
-}
+export type { BorderPolygons, Point, PolygonKeyframe } from './borderGeometry';
+export { polygonAreaPx };
 
 export interface BorderMeasurements {
   lumenAreaMm2: number;
@@ -65,9 +55,12 @@ export interface BorderMeasurements {
   plaqueBurdenPct: number;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+export type BorderSource =
+  | { kind: 'edit' }
+  | { kind: 'keyframe' }
+  | { kind: 'annotation'; agreement: number }
+  | { kind: 'interpolated' }
+  | { kind: 'default' };
 
 /** Natural width/height of the reference IVUS frame image. */
 export const REFERENCE_SIZE = 720;
@@ -79,146 +72,278 @@ export const REFERENCE_SIZE = 720;
  */
 export const PIXELS_PER_MM = 12;
 
-/** Number of points used for rendering / editing each border. */
-export const POLYGON_SAMPLE_COUNT = 10;
+/** Points per border for live interpolation between keyframes. */
+const INTERPOLATION_SAMPLES = 32;
+
+/** Shown before any keyframe has been authored for a leg. */
+const DEFAULT_BORDERS: BorderPolygons = {
+  lumen: Array.from({ length: 16 }, (_, i) => ({ x: 360 + 50 * Math.cos((i / 16) * 2 * Math.PI), y: 360 + 50 * Math.sin((i / 16) * 2 * Math.PI) })),
+  vessel: Array.from({ length: 16 }, (_, i) => ({ x: 360 + 60 * Math.cos((i / 16) * 2 * Math.PI), y: 360 + 60 * Math.sin((i / 16) * 2 * Math.PI) })),
+};
 
 // ---------------------------------------------------------------------------
-// Keyframes — extracted by visually tracing the annotated frames
+// Change notification
 // ---------------------------------------------------------------------------
 
-export const BORDER_KEYFRAMES: BorderKeyframe[] = [
-  // Frame 1: Small horizontal ellipse hugging the catheter
-  {
-    frame: 1,
-    lumen:  { cx: 385, cy: 360, rx: 24, ry: 13, rot: 0 },
-    vessel: { cx: 385, cy: 360, rx: 29, ry: 17, rot: 0 },
-  },
-  // Frame 89: Very small ellipse slightly above center
-  {
-    frame: 89,
-    lumen:  { cx: 370, cy: 348, rx: 14, ry: 8,  rot: 5 },
-    vessel: { cx: 370, cy: 348, rx: 22, ry: 12, rot: 5 },
-  },
-  // Frame 194: Elongated horizontal ellipse, slightly tilted
-  {
-    frame: 194,
-    lumen:  { cx: 370, cy: 360, rx: 42, ry: 12, rot: -5 },
-    vessel: { cx: 370, cy: 360, rx: 56, ry: 18, rot: -5 },
-  },
-  // Frame 247: Tilted ellipse, moderate length
-  {
-    frame: 247,
-    lumen:  { cx: 360, cy: 365, rx: 45, ry: 12, rot: -15 },
-    vessel: { cx: 360, cy: 365, rx: 56, ry: 18, rot: -15 },
-  },
-  // Frame 329: Larger, more tilted ellipse
-  {
-    frame: 329,
-    lumen:  { cx: 360, cy: 365, rx: 60, ry: 18, rot: -22 },
-    vessel: { cx: 360, cy: 365, rx: 80, ry: 26, rot: -22 },
-  },
-  // Frame 437: Strongly tilted (~ -60°) diagonal ellipse
-  {
-    frame: 437,
-    lumen:  { cx: 395, cy: 380, rx: 62, ry: 18, rot: -60 },
-    vessel: { cx: 395, cy: 380, rx: 78, ry: 28, rot: -60 },
-  },
-  // Frame 634: Nearly vertical oval (rotated ~ -85°)
-  {
-    frame: 634,
-    lumen:  { cx: 400, cy: 305, rx: 65, ry: 36, rot: -85 },
-    vessel: { cx: 400, cy: 305, rx: 75, ry: 44, rot: -85 },
-  },
-  // Frame 702: Nearly circular
-  {
-    frame: 702,
-    lumen:  { cx: 360, cy: 380, rx: 42, ry: 38, rot: 0 },
-    vessel: { cx: 360, cy: 380, rx: 48, ry: 45, rot: 0 },
-  },
-];
+const editListeners = new Set<() => void>();
 
-// ---------------------------------------------------------------------------
-// Interpolation helpers
-// ---------------------------------------------------------------------------
-
-/** Smoothstep easing — gives a nicer transition than pure linear. */
-function smoothstep(t: number): number {
-  const clamped = Math.max(0, Math.min(1, t));
-  return clamped * clamped * (3 - 2 * clamped);
+function notifyEdits() {
+  editListeners.forEach((l) => l());
 }
 
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
+export function subscribeToBorderEdits(listener: () => void): () => void {
+  editListeners.add(listener);
+  return () => editListeners.delete(listener);
 }
 
-/** Interpolate rotation taking the shortest angular path (handles -85° -> +5°). */
-function lerpAngle(a: number, b: number, t: number): number {
-  let diff = b - a;
-  while (diff > 180) diff -= 360;
-  while (diff < -180) diff += 360;
-  return a + diff * t;
+// ---------------------------------------------------------------------------
+// Active leg
+// ---------------------------------------------------------------------------
+
+// Kept independent from appConstants.ts's `setActiveLeg` (roadmap positioning) -
+// App.tsx calls both whenever the leg switches. Defaults to the app's first leg.
+let activeLeg: Leg = 'right';
+
+export function setActiveBorderLeg(leg: Leg): void {
+  activeLeg = leg;
+  userEdits.clear(); // session edits don't carry across a leg switch
+  notifyEdits();
 }
 
-function lerpEllipse(a: EllipseShape, b: EllipseShape, t: number): EllipseShape {
-  return {
-    cx:  lerp(a.cx,  b.cx,  t),
-    cy:  lerp(a.cy,  b.cy,  t),
-    rx:  lerp(a.rx,  b.rx,  t),
-    ry:  lerp(a.ry,  b.ry,  t),
-    rot: lerpAngle(a.rot, b.rot, t),
-  };
+// ---------------------------------------------------------------------------
+// Expert keyframes (editable at runtime by the Border Tool)
+// ---------------------------------------------------------------------------
+
+const KEYFRAMES: Record<Leg, Map<number, BorderPolygons>> = {
+  left: keyframesToMap(BORDER_POLYGON_KEYFRAMES_LEFT),
+  right: keyframesToMap(BORDER_POLYGON_KEYFRAMES_RIGHT),
+};
+
+const sortedFramesCache: Partial<Record<Leg, number[]>> = {};
+
+function keyframeFrames(leg: Leg): number[] {
+  if (!sortedFramesCache[leg]) sortedFramesCache[leg] = Array.from(KEYFRAMES[leg].keys()).sort((a, b) => a - b);
+  return sortedFramesCache[leg]!;
+}
+
+function keyframesChanged(leg: Leg): void {
+  delete sortedFramesCache[leg];
+  checksumCache[leg].clear();
+  notifyEdits();
+}
+
+export function setPolygonKeyframe(frame: number, kind: 'lumen' | 'vessel', polygon: Point[]): void {
+  const map = KEYFRAMES[activeLeg];
+  const cur = map.get(frame) ?? clonePolygons(resolve(frame).polygons);
+  map.set(frame, { ...cur, [kind]: polygon.map((p) => ({ ...p })) });
+  const edit = userEdits.get(frame);
+  if (edit) {
+    delete edit[kind]; // the keyframe now holds it
+    if (!edit.lumen && !edit.vessel) userEdits.delete(frame);
+  }
+  keyframesChanged(activeLeg);
+}
+
+/** Save both borders of `frame` as a keyframe, exactly as given. */
+export function setKeyframeBorders(frame: number, polygons: BorderPolygons): void {
+  KEYFRAMES[activeLeg].set(frame, clonePolygons(polygons));
+  userEdits.delete(frame);
+  keyframesChanged(activeLeg);
+}
+
+export function getKeyframeBorders(frame: number): BorderPolygons | undefined {
+  const kf = KEYFRAMES[activeLeg].get(frame);
+  return kf && clonePolygons(kf);
+}
+
+export function deletePolygonKeyframe(frame: number): void {
+  KEYFRAMES[activeLeg].delete(frame);
+  keyframesChanged(activeLeg);
+}
+
+export function getPolygonKeyframeFrames(): number[] {
+  return [...keyframeFrames(activeLeg)];
+}
+
+/** Ready-to-paste TS source for every keyframe of the active leg (paste into data/borderKeyframes.ts). */
+export function exportPolygonKeyframes(): string {
+  const constName = `BORDER_POLYGON_KEYFRAMES_${activeLeg.toUpperCase()}`;
+  const fmt = (pts: Point[]) => `[${pts.map((p) => `[${Math.round(p.x)}, ${Math.round(p.y)}]`).join(', ')}]`;
+  const body = keyframeFrames(activeLeg)
+    .map((frame) => {
+      const kf = KEYFRAMES[activeLeg].get(frame)!;
+      return `  { frame: ${frame}, lumen: ${fmt(kf.lumen)}, vessel: ${fmt(kf.vessel)} },`;
+    })
+    .join('\n');
+  return `export const ${constName}: PolygonKeyframe[] = [\n${body}\n];`;
+}
+
+// ---------------------------------------------------------------------------
+// Per-frame annotations (precomputed from the keyframes + frame pixels)
+// ---------------------------------------------------------------------------
+
+interface AnnotationFile {
+  catheterCentre?: Point;
+  anchors: Record<string, string>;
+  frames: Record<string, { l: number[]; v: number[]; c: number }>;
+}
+
+const ANNOTATIONS: Record<Leg, AnnotationFile> = {
+  left: annotationsLeft as unknown as AnnotationFile,
+  right: annotationsRight as unknown as AnnotationFile,
+};
+
+/** Centre of the imaging catheter in the active leg's frames (720 space). */
+export function getCatheterCentre(): Point {
+  return ANNOTATIONS[activeLeg].catheterCentre ?? { x: REFERENCE_SIZE / 2, y: REFERENCE_SIZE / 2 };
+}
+
+const annotationAnchorFrames: Record<Leg, number[]> = {
+  left: Object.keys(ANNOTATIONS.left.anchors).map(Number).sort((a, b) => a - b),
+  right: Object.keys(ANNOTATIONS.right.anchors).map(Number).sort((a, b) => a - b),
+};
+
+const checksumCache: Record<Leg, Map<number, string>> = { left: new Map(), right: new Map() };
+
+function liveChecksum(leg: Leg, frame: number): string | undefined {
+  const cache = checksumCache[leg];
+  if (!cache.has(frame)) {
+    const kf = KEYFRAMES[leg].get(frame);
+    if (!kf) return undefined;
+    cache.set(frame, keyframeChecksum(kf));
+  }
+  return cache.get(frame);
+}
+
+/** The precomputed annotation is valid only if its bracketing keyframes are the same, unchanged ones it was generated from. */
+function annotationIsCurrent(leg: Leg, frame: number): boolean {
+  const [livePrev, liveNext] = bracketFrames(keyframeFrames(leg), frame);
+  const [genPrev, genNext] = bracketFrames(annotationAnchorFrames[leg], frame);
+  if (livePrev !== genPrev || liveNext !== genNext) return false;
+  const anchors = ANNOTATIONS[leg].anchors;
+  return [livePrev, liveNext].every((f) => f === undefined || liveChecksum(leg, f) === anchors[f]);
+}
+
+const parsedAnnotations: Record<Leg, Map<number, BorderPolygons>> = { left: new Map(), right: new Map() };
+
+function annotationAt(leg: Leg, frame: number): { polygons: BorderPolygons; agreement: number } | null {
+  const entry = ANNOTATIONS[leg].frames[frame];
+  if (!entry || !annotationIsCurrent(leg, frame)) return null;
+  let polygons = parsedAnnotations[leg].get(frame);
+  if (!polygons) {
+    const unflat = (a: number[]) => Array.from({ length: a.length / 2 }, (_, i) => ({ x: a[2 * i], y: a[2 * i + 1] }));
+    polygons = { lumen: unflat(entry.l), vessel: unflat(entry.v) };
+    parsedAnnotations[leg].set(frame, polygons);
+  }
+  return { polygons, agreement: entry.c };
 }
 
 /**
- * Compute the (ellipse) lumen and vessel shapes for a given frame number,
- * by interpolating between the surrounding keyframes.
+ * Frames most worth an extra expert keyframe: per keyframe gap, the frame
+ * where image tracking and interpolation disagree most (lowest agreement).
  */
-export function getInterpolatedShapes(frame: number): BorderShapes {
-  const kfs = BORDER_KEYFRAMES;
-  if (frame <= kfs[0].frame) {
-    return { lumen: { ...kfs[0].lumen }, vessel: { ...kfs[0].vessel } };
+export function getReviewSuggestions(limit = 8): Array<{ frame: number; agreement: number }> {
+  const frames = keyframeFrames(activeLeg);
+  const worstPerGap = new Map<string, { frame: number; agreement: number }>();
+  for (const [key, entry] of Object.entries(ANNOTATIONS[activeLeg].frames)) {
+    const frame = Number(key);
+    if (KEYFRAMES[activeLeg].has(frame) || !annotationIsCurrent(activeLeg, frame)) continue;
+    const gap = bracketFrames(frames, frame).join('-');
+    const worst = worstPerGap.get(gap);
+    if (!worst || entry.c < worst.agreement) worstPerGap.set(gap, { frame, agreement: entry.c });
   }
-  if (frame >= kfs[kfs.length - 1].frame) {
-    const last = kfs[kfs.length - 1];
-    return { lumen: { ...last.lumen }, vessel: { ...last.vessel } };
-  }
-
-  // Find surrounding keyframes
-  let i = 0;
-  while (i < kfs.length - 1 && kfs[i + 1].frame <= frame) i++;
-  const a = kfs[i];
-  const b = kfs[i + 1];
-  const t = smoothstep((frame - a.frame) / (b.frame - a.frame));
-
-  return {
-    lumen:  lerpEllipse(a.lumen,  b.lumen,  t),
-    vessel: lerpEllipse(a.vessel, b.vessel, t),
-  };
+  return [...worstPerGap.values()].filter((s) => s.agreement < 0.97).sort((a, b) => a.agreement - b.agreement).slice(0, limit);
 }
 
 // ---------------------------------------------------------------------------
-// Geometry helpers
+// Session edits (analysis screen), propagated to neighbouring frames
 // ---------------------------------------------------------------------------
 
-/** Sample N points along an ellipse perimeter (in 720-space). */
-export function sampleEllipse(
-  shape: EllipseShape,
-  count: number = POLYGON_SAMPLE_COUNT,
-): Point[] {
-  const points: Point[] = [];
-  const rad = (shape.rot * Math.PI) / 180;
-  const cosR = Math.cos(rad);
-  const sinR = Math.sin(rad);
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2;
-    const x0 = Math.cos(angle) * shape.rx;
-    const y0 = Math.sin(angle) * shape.ry;
-    points.push({
-      x: shape.cx + x0 * cosR - y0 * sinR,
-      y: shape.cy + x0 * sinR + y0 * cosR,
-    });
+const userEdits = new Map<number, Partial<BorderPolygons>>();
+
+/** How far an edit propagates (in frames) on each side. */
+const PROPAGATION_RADIUS = 25;
+const PROPAGATION_SIGMA = PROPAGATION_RADIUS / 2;
+const PROPAGATION_SAMPLES = 32;
+
+let propagateEdits = true;
+
+/** The Border Tool authors exact keyframes, so it turns neighbour propagation off. */
+export function setEditPropagation(enabled: boolean): void {
+  propagateEdits = enabled;
+}
+
+/**
+ * Commit a user-edited border at `frame` and carry the same shape correction
+ * to nearby frames with a Gaussian falloff. Borders are compared as aligned
+ * arc-length resamplings, so the edit may use any number of points.
+ */
+export function commitBorderEdit(frame: number, kind: 'lumen' | 'vessel', editedPolygon: Point[]): void {
+  // The catheter always lies inside the lumen, so an edit can't leave it outside.
+  const covered = coverDisc(editedPolygon, getCatheterCentre(), kind === 'lumen' ? CATHETER_AREA_RADIUS : VESSEL_CATHETER_AREA_RADIUS);
+  if (propagateEdits) propagateEdit(frame, kind, covered);
+  userEdits.set(frame, { ...userEdits.get(frame), [kind]: covered.map((p) => ({ ...p })) });
+  notifyEdits();
+}
+
+function propagateEdit(frame: number, kind: 'lumen' | 'vessel', editedPolygon: Point[]): void {
+  const resample = (pts: Point[]) => resamplePolygonByArcLength(smoothPolygon(pts), PROPAGATION_SAMPLES);
+  const before = resample(getBorderPolygons(frame)[kind]);
+  const after = bestAlignment(before, resample(editedPolygon));
+  const delta = before.map((p, i) => ({ x: after[i].x - p.x, y: after[i].y - p.y }));
+
+  for (let df = -PROPAGATION_RADIUS; df <= PROPAGATION_RADIUS; df++) {
+    const nf = frame + df;
+    if (df === 0 || nf < 1 || KEYFRAMES[activeLeg].has(nf)) continue; // keyframes stay exactly as traced
+    const falloff = Math.exp(-(df * df) / (2 * PROPAGATION_SIGMA * PROPAGATION_SIGMA));
+    if (falloff < 0.05) continue;
+    const neighbor = bestAlignment(before, resample(getBorderPolygons(nf)[kind]));
+    const moved = neighbor.map((p, i) => ({ x: p.x + delta[i].x * falloff, y: p.y + delta[i].y * falloff }));
+    userEdits.set(nf, { ...userEdits.get(nf), [kind]: moved });
   }
-  return points;
+}
+
+// ---------------------------------------------------------------------------
+// Resolution + measurements — single source of truth for the UI
+// ---------------------------------------------------------------------------
+
+function resolve(frame: number): { polygons: BorderPolygons; source: BorderSource } {
+  const keyframe = KEYFRAMES[activeLeg].get(frame);
+  let base: { polygons: BorderPolygons; source: BorderSource };
+  if (keyframe) base = { polygons: clonePolygons(keyframe), source: { kind: 'keyframe' } };
+  else {
+    const annotated = annotationAt(activeLeg, frame);
+    if (annotated) base = { polygons: clonePolygons(annotated.polygons), source: { kind: 'annotation', agreement: annotated.agreement } };
+    else {
+      const interpolated = interpolateKeyframes(KEYFRAMES[activeLeg], frame, INTERPOLATION_SAMPLES);
+      const centre = getCatheterCentre();
+      base = interpolated
+        ? {
+          polygons: {
+            lumen: coverDisc(interpolated.lumen, centre, CATHETER_AREA_RADIUS),
+            vessel: coverDisc(interpolated.vessel, centre, VESSEL_CATHETER_AREA_RADIUS),
+          },
+          source: { kind: 'interpolated' },
+        }
+        : { polygons: clonePolygons(DEFAULT_BORDERS), source: { kind: 'default' } };
+    }
+  }
+  const edit = userEdits.get(frame);
+  if (!edit) return base;
+  return {
+    polygons: { lumen: edit.lumen ?? base.polygons.lumen, vessel: edit.vessel ?? base.polygons.vessel },
+    source: { kind: 'edit' },
+  };
+}
+
+/** Lumen/vessel borders to render at a frame (see the file header for the source priority). */
+export function getBorderPolygons(frame: number): BorderPolygons {
+  return resolve(frame).polygons;
+}
+
+/** Where the borders at `frame` come from (for tooling/QA). */
+export function getBorderSource(frame: number): BorderSource {
+  return resolve(frame).source;
 }
 
 /** Build a smooth closed SVG path through a set of points using cubic Bézier. */
@@ -230,7 +355,7 @@ export function pointsToSmoothPath(points: Point[]): string {
     const p1 = points[i];
     const p2 = points[(i + 1) % points.length];
     const p3 = points[(i + 2) % points.length];
-    // Catmull-Rom -> Bezier conversion (tension 0.5)
+    // Catmull-Rom -> Bezier conversion (tension 0.5); keep in sync with borderGeometry.smoothPolygon
     const c1x = p1.x + (p2.x - p0.x) / 6;
     const c1y = p1.y + (p2.y - p0.y) / 6;
     const c2x = p2.x - (p3.x - p1.x) / 6;
@@ -238,22 +363,6 @@ export function pointsToSmoothPath(points: Point[]): string {
     path += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
   }
   return path + ' Z';
-}
-
-/** Polygon area via shoelace formula (pixels², in 720-space). */
-export function polygonAreaPx(points: Point[]): number {
-  let sum = 0;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i];
-    const b = points[(i + 1) % points.length];
-    sum += a.x * b.y - b.x * a.y;
-  }
-  return Math.abs(sum) / 2;
-}
-
-/** Ellipse area in pixels² (in 720-space). */
-export function ellipseAreaPx(shape: EllipseShape): number {
-  return Math.PI * shape.rx * shape.ry;
 }
 
 /** Convert pixel area (720-space) to mm². */
@@ -267,11 +376,9 @@ export function areaToEquivalentDiameter(areaMm2: number): number {
 }
 
 /**
- * Compute the minimum and maximum "caliper" diameters of a polygon by
- * projecting all vertices onto many directions and measuring the extent
- * (max − min projection) along each.  This gives the narrowest and widest
- * widths of the shape — equivalent to rotating a pair of parallel calipers
- * around the polygon.
+ * Minimum and maximum "caliper" diameters of a polygon: project all vertices
+ * onto many directions and measure the extent along each (like rotating a
+ * pair of parallel calipers around the shape).
  */
 export function polygonMinMaxDiameters(points: Point[]): { minPx: number; maxPx: number } {
   if (points.length < 2) return { minPx: 0, maxPx: 0 };
@@ -296,222 +403,24 @@ export function polygonMinMaxDiameters(points: Point[]): { minPx: number; maxPx:
   return { minPx: minW, maxPx: maxW };
 }
 
-// ---------------------------------------------------------------------------
-// Detected border data (precomputed by scripts/detect-ivus-borders.js)
-// ---------------------------------------------------------------------------
-
-import detectedBorderData from '../data/ivus-border-data.json';
-
-type RawBorderData = Record<string, { lumen: [number, number][]; vessel: [number, number][] }>;
-const DETECTED: RawBorderData = detectedBorderData as unknown as RawBorderData;
-
-function pointsFromRaw(raw: [number, number][]): Point[] {
-  return raw.map(([x, y]) => ({ x, y }));
-}
-
-/**
- * Runtime overrides for the bundled detected data. The Electron IPC handler
- * fills this in after a full-cine re-detect so the renderer sees the new
- * polygons without having to reload the page.
- */
-const detectedOverrides: Map<number, { lumen?: Point[]; vessel?: Point[] }> = new Map();
-
-/** Returns the polygon for a frame (10 points), or null if missing. Checks runtime overrides first. */
-function getDetectedPolygon(frame: number, kind: 'lumen' | 'vessel'): Point[] | null {
-  const override = detectedOverrides.get(frame)?.[kind];
-  if (override) return override;
-  const entry = DETECTED[String(frame)];
-  if (!entry) return null;
-  return pointsFromRaw(entry[kind]);
-}
-
-// ---------------------------------------------------------------------------
-// User edit store + propagation
-// ---------------------------------------------------------------------------
-
-type EditMap = Map<number, { lumen?: Point[]; vessel?: Point[] }>;
-const userEdits: EditMap = new Map();
-
-/** Listeners notified whenever the user edit set changes. */
-const editListeners = new Set<() => void>();
-let editVersion = 0;
-
-function notifyEdits() {
-  editVersion++;
-  editListeners.forEach((l) => l());
-}
-
-export function subscribeToBorderEdits(listener: () => void): () => void {
-  editListeners.add(listener);
-  return () => editListeners.delete(listener);
-}
-
-/** Monotonic counter that bumps whenever any edit changes. */
-export function getBorderEditVersion(): number {
-  return editVersion;
-}
-
-/** How far an edit propagates (in frames) on each side. */
-const PROPAGATION_RADIUS = 25;
-/** Gaussian sigma for falloff; ~63% of radius. */
-const PROPAGATION_SIGMA = PROPAGATION_RADIUS / 2;
-
-/**
- * Commit a user-edited polygon at `frame`, and propagate the same per-point
- * delta to nearby frames with a Gaussian falloff. This is how the user's
- * adjustment "teaches" the system about the local anatomy.
- */
-export function commitBorderEdit(
-  frame: number,
-  kind: 'lumen' | 'vessel',
-  editedPolygon: Point[],
-): void {
-  // 1) Always store the exact edited polygon at this frame (any point count).
-  const cur = userEdits.get(frame) ?? {};
-  userEdits.set(frame, { ...cur, [kind]: editedPolygon.map((p) => ({ ...p })) });
-
-  // 2) Geometric propagation to ±25 neighbors (instant feedback) — only when
-  //    the user's polygon has the same point count as the bundled baseline,
-  //    since the delta is computed per-point.  If the user added/removed
-  //    handles, we skip this step; the IPC re-detect below still runs and
-  //    will update every frame ~25-40s later.
-  const baseline = getDetectedPolygon(frame, kind);
-  if (baseline && baseline.length === editedPolygon.length) {
-    const delta = editedPolygon.map((p, i) => ({
-      x: p.x - baseline[i].x,
-      y: p.y - baseline[i].y,
-    }));
-    for (let df = -PROPAGATION_RADIUS; df <= PROPAGATION_RADIUS; df++) {
-      if (df === 0) continue;
-      const nf = frame + df;
-      if (nf < 1) continue;
-      const neighborBase = getDetectedPolygon(nf, kind);
-      if (!neighborBase || neighborBase.length !== delta.length) continue;
-      const falloff = Math.exp(-(df * df) / (2 * PROPAGATION_SIGMA * PROPAGATION_SIGMA));
-      if (falloff < 0.05) continue;
-      const newPoly = neighborBase.map((p, i) => ({
-        x: p.x + delta[i].x * falloff,
-        y: p.y + delta[i].y * falloff,
-      }));
-      const ncur = userEdits.get(nf) ?? {};
-      userEdits.set(nf, { ...ncur, [kind]: newPoly });
-    }
-  }
-
-  notifyEdits();
-
-  // ----------------------------------------------------------------------
-  // TEMPORARY: if running in Electron, promote this edit to a permanent
-  // keyframe and re-run full-cine detection so EVERY frame's prior reflects
-  // the new anchor.  The geometric propagation above stays on screen as
-  // instant feedback; the full result lands ~25-40s later and replaces it.
-  // ----------------------------------------------------------------------
-  const api = typeof window !== 'undefined' ? window.ivusApi : undefined;
-  if (api && typeof api.promoteKeyframeAndRedetect === 'function') {
-    if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.log(`[ivusBorders] promoting frame ${frame} (${kind}) to keyframe and re-detecting...`);
-    }
-    api
-      .promoteKeyframeAndRedetect({
-        frame,
-        kind,
-        polygon: editedPolygon.map((p) => ({ x: p.x, y: p.y })),
-      })
-      .then((res) => {
-        if (!res || !res.ok || !res.updated) {
-          // eslint-disable-next-line no-console
-          console.warn('[ivusBorders] re-detect returned no data:', res?.error);
-          return;
-        }
-        // Replace the bundled detected data for every frame with the new
-        // full-cine result, and clear local user-edit overrides for those
-        // frames so the new detected data is what gets rendered.
-        for (const [frameStr, polys] of Object.entries(res.updated)) {
-          const nf = Number(frameStr);
-          if (!Number.isFinite(nf)) continue;
-          detectedOverrides.set(nf, {
-            lumen: polys.lumen.map(([x, y]) => ({ x, y })),
-            vessel: polys.vessel.map(([x, y]) => ({ x, y })),
-          });
-          // Clear user edits for this frame — the new detected data already
-          // incorporates the promoted keyframe.
-          userEdits.delete(nf);
-        }
-        if (process.env.NODE_ENV !== 'production') {
-          // eslint-disable-next-line no-console
-          console.log(
-            `[ivusBorders] re-detected ${res.framesProcessed} frames in ${res.elapsedMs}ms ` +
-              `(now ${res.anchorCount} anchor(s) total)`,
-          );
-        }
-        notifyEdits();
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn('[ivusBorders] promoteKeyframeAndRedetect failed:', err);
-      });
-  }
-}
-
-/** Clear all user edits. */
-export function clearBorderEdits(): void {
-  userEdits.clear();
-  notifyEdits();
-}
-
-/** Returns true if the given frame currently has any user-edited override. */
-export function hasUserEdit(frame: number, kind?: 'lumen' | 'vessel'): boolean {
-  const e = userEdits.get(frame);
-  if (!e) return false;
-  if (!kind) return Boolean(e.lumen || e.vessel);
-  return Boolean(e[kind]);
-}
-
-// ---------------------------------------------------------------------------
-// Top-level shape + measurement APIs — single source of truth for the UI
-// ---------------------------------------------------------------------------
-
-/**
- * Return the 10-point polygons to render at a frame. Resolution order:
- *   1. User-edited polygon (if present)
- *   2. Auto-detected polygon (precomputed)
- *   3. Interpolated ellipse fallback (sampled at POLYGON_SAMPLE_COUNT)
- */
-export function getBorderPolygons(frame: number): { lumen: Point[]; vessel: Point[] } {
-  const resolve = (kind: 'lumen' | 'vessel'): Point[] => {
-    const edited = userEdits.get(frame)?.[kind];
-    if (edited) return edited;
-    const detected = getDetectedPolygon(frame, kind);
-    if (detected) return detected;
-    const shape = getInterpolatedShapes(frame)[kind];
-    return sampleEllipse(shape);
-  };
-  return { lumen: resolve('lumen'), vessel: resolve('vessel') };
-}
-
-/** Lumen/vessel measurements derived from the rendered polygon (incl. edits). */
+/** Lumen/vessel measurements of the borders as rendered (smooth curve), incl. edits. */
 export function getBorderMeasurements(frame: number): BorderMeasurements {
-  const { lumen, vessel } = getBorderPolygons(frame);
+  const polys = getBorderPolygons(frame);
+  const lumen = smoothPolygon(polys.lumen, 6);
+  const vessel = smoothPolygon(polys.vessel, 6);
   const lumenAreaMm2 = pxAreaToMm2(polygonAreaPx(lumen));
   const vesselAreaMm2 = pxAreaToMm2(polygonAreaPx(vessel));
-  const lumenDiameterMm = areaToEquivalentDiameter(lumenAreaMm2);
-  const vesselDiameterMm = areaToEquivalentDiameter(vesselAreaMm2);
   const lumenDia = polygonMinMaxDiameters(lumen);
   const vesselDia = polygonMinMaxDiameters(vessel);
-  const plaqueBurdenPct =
-    vesselAreaMm2 > lumenAreaMm2
-      ? ((vesselAreaMm2 - lumenAreaMm2) / vesselAreaMm2) * 100
-      : 0;
   return {
     lumenAreaMm2,
     vesselAreaMm2,
-    lumenDiameterMm,
-    vesselDiameterMm,
+    lumenDiameterMm: areaToEquivalentDiameter(lumenAreaMm2),
+    vesselDiameterMm: areaToEquivalentDiameter(vesselAreaMm2),
     lumenMinDiameterMm: lumenDia.minPx / PIXELS_PER_MM,
     lumenMaxDiameterMm: lumenDia.maxPx / PIXELS_PER_MM,
     vesselMinDiameterMm: vesselDia.minPx / PIXELS_PER_MM,
     vesselMaxDiameterMm: vesselDia.maxPx / PIXELS_PER_MM,
-    plaqueBurdenPct,
+    plaqueBurdenPct: vesselAreaMm2 > lumenAreaMm2 ? ((vesselAreaMm2 - lumenAreaMm2) / vesselAreaMm2) * 100 : 0,
   };
 }

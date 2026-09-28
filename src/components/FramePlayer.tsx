@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 interface FramePlayerProps {
-  sequence: "postrecord" | "treatment";
+  sequence: "postrecord" | "postrecord-left-leg" | "postrecord-right-leg" | "treatment";
   isPlaying: boolean;
   playbackRate?: number;
   className?: string;
@@ -10,7 +10,9 @@ interface FramePlayerProps {
 }
 
 const FRAME_COUNTS = {
-  postrecord: 983,
+  postrecord: 983, // near-future's X-ray Ref sequence (unrelated to distant-future's leg switching)
+  "postrecord-left-leg": 788,
+  "postrecord-right-leg": 752,
   treatment: 2258,
 };
 

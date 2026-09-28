@@ -6,6 +6,7 @@ interface LiveMainScreenProps {
   onStartRecording: () => void;
   isSyncPlaybackEnabled: boolean;
   onToggleSyncPlayback: () => void;
+  liveIvusSrc: string;
 }
 
 function Icons() {
@@ -266,9 +267,10 @@ function LiveIndicator({ left, top }: LiveIndicatorProps) {
 
 interface IVUSDisplayProps {
   isSyncPlaybackEnabled: boolean;
+  liveIvusSrc: string;
 }
 
-function IVUSDisplay({ isSyncPlaybackEnabled }: IVUSDisplayProps) {
+function IVUSDisplay({ isSyncPlaybackEnabled, liveIvusSrc }: IVUSDisplayProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const ivusLeft = isSyncPlaybackEnabled ? 900 : 960 - 695 / 2; // Center when no tutorial
   const ivusTop = 87;
@@ -280,9 +282,10 @@ function IVUSDisplay({ isSyncPlaybackEnabled }: IVUSDisplayProps) {
         {/* Live IVUS Video */}
         <div className="relative w-full h-full">
           <video
+            key={liveIvusSrc}
             ref={videoRef}
             className="w-full h-full object-cover rounded-full"
-            src="/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4"
+            src={liveIvusSrc}
             autoPlay
             loop
             muted
@@ -386,7 +389,7 @@ function ToggleSwitch({ isEnabled }: ToggleSwitchProps) {
   );
 }
 
-export function LiveMainScreen({ onStartRecording, isSyncPlaybackEnabled, onToggleSyncPlayback }: LiveMainScreenProps) {
+export function LiveMainScreen({ onStartRecording, isSyncPlaybackEnabled, onToggleSyncPlayback, liveIvusSrc }: LiveMainScreenProps) {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   useEffect(() => {
@@ -418,7 +421,7 @@ export function LiveMainScreen({ onStartRecording, isSyncPlaybackEnabled, onTogg
     <div className="bg-[#000000] relative w-[1920px] h-[1080px]" data-name="Live Main Screen">
       <NavigationBarIgt onScreenshotClick={() => window.parent.postMessage({ type: "intrasight-screenshot", time: 0 }, "*")} />
       <Frame4 isSyncPlaybackEnabled={isSyncPlaybackEnabled} />
-      <IVUSDisplay isSyncPlaybackEnabled={isSyncPlaybackEnabled} />
+      <IVUSDisplay isSyncPlaybackEnabled={isSyncPlaybackEnabled} liveIvusSrc={liveIvusSrc} />
       <SideBar />
       <ChromaFlo />
 

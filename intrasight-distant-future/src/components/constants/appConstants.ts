@@ -7,7 +7,7 @@ export const APP_CONSTANTS = {
   
   // Initial values
   INITIAL_SCRUBBER_POSITION: 666,
-  INITIAL_SEGMENT_WIDTH: 203,
+  INITIAL_SEGMENT_WIDTH: 88, // ~2s at the 1403px/32s ILD scale, matching near-future's default 2-second segment
   INITIAL_NEXT_BOOKMARK_ID: 1,
   INITIAL_NEXT_SEGMENT_ID: 1,
   
@@ -112,22 +112,74 @@ export const APP_CONSTANTS = {
   },
 };
 
-// Ruler path data for diamond indicator positioning along virtual ruler
-export const RULER_PATH_DATA = [
+export type Leg = "left" | "right";
+
+export interface RulerPathPoint {
+  progress: number;
+  x: number;
+  y: number;
+}
+
+// Ruler path data for diamond indicator positioning along virtual ruler.
+// This traces the catheter's on-screen position (video-relative pixels) for
+// the LEFT leg's fluoro recording - traced/verified against the real video
+// using the Roadmap Tool (#/roadmap-tool).
+export const RULER_PATH_DATA_LEFT: RulerPathPoint[] = [
   { progress: 0, y: -100, x: -10 },
   { progress: 0.0625, y: -38, x: -6 },
   { progress: 0.125, y: -24, x: -6 },
   { progress: 0.1875, y: -19, x: -6 },
-  { progress: 0.25, y: 58, x: 5 },
-  { progress: 0.3125, y: 97, x: 14 },
-  { progress: 0.375, y: 144, x: 25 },
-  { progress: 0.4375, y: 176, x: 29 },
-  { progress: 0.5, y: 266, x: 63 },
-  { progress: 0.5625, y: 346, x: 117 },
-  { progress: 0.625, y: 432, x: 182 },
-  { progress: 0.6875, y: 475, x: 215 },
-  { progress: 0.75, y: 551, x: 260 },
-  { progress: 0.8125, y: 629, x: 298 },
+  { progress: 0.25, y: 61, x: -7 },
+  { progress: 0.3125, y: 105, x: 0 },
+  { progress: 0.375, y: 146, x: 10 },
+  { progress: 0.4375, y: 189, x: 23 },
+  { progress: 0.5, y: 266, x: 54 },
+  { progress: 0.5625, y: 346, x: 104 },
+  { progress: 0.625, y: 438, x: 167 },
+  { progress: 0.6875, y: 490, x: 205 },
+  { progress: 0.75, y: 558, x: 252 },
+  { progress: 0.8125, y: 627, x: 290 },
   { progress: 0.875, y: 668, x: 309 },
-  { progress: 1, y: 710, x: 310 },
+  { progress: 1, y: 707, x: 329 },
 ];
+
+// RIGHT leg's catheter path - traced against the real Right Leg fluoro
+// recording using the Roadmap Tool (#/roadmap-tool).
+export const RULER_PATH_DATA_RIGHT: RulerPathPoint[] = [
+  { progress: 0, y: -100, x: -10 },
+  { progress: 0.0625, y: -38, x: -6 },
+  { progress: 0.125, y: -24, x: -6 },
+  { progress: 0.1875, y: -19, x: -6 },
+  { progress: 0.25, y: 65, x: -6 },
+  { progress: 0.3125, y: 123, x: -16 },
+  { progress: 0.375, y: 169, x: -24 },
+  { progress: 0.4375, y: 235, x: -33 },
+  { progress: 0.5, y: 288, x: -47 },
+  { progress: 0.5625, y: 350, x: -57 },
+  { progress: 0.625, y: 399, x: -69 },
+  { progress: 0.6875, y: 450, x: -80 },
+  { progress: 0.75, y: 511, x: -97 },
+  { progress: 0.8125, y: 578, x: -114 },
+  { progress: 0.875, y: 642, x: -134 },
+  { progress: 1, y: 727, x: -163 },
+];
+
+// Diamond indicator base offsets, per leg (video framing differs per recording).
+export const INDICATOR_OFFSETS_LEFT = { x: 279, y: 53 };
+export const INDICATOR_OFFSETS_RIGHT = { x: 279, y: 53 };
+
+// Mutable "active" path array. PositionUtils/ILDPathOverlay import this same
+// array reference and index into it directly, so mutating its CONTENTS (never
+// reassigning the binding) is what makes `setActiveLeg` take effect everywhere
+// without threading a `leg` prop through every consumer.
+export const RULER_PATH_DATA: RulerPathPoint[] = [...RULER_PATH_DATA_RIGHT];
+
+export function setActiveLeg(leg: Leg): void {
+  const source = leg === "right" ? RULER_PATH_DATA_RIGHT : RULER_PATH_DATA_LEFT;
+  RULER_PATH_DATA.length = 0;
+  RULER_PATH_DATA.push(...source);
+
+  const offsets = leg === "right" ? INDICATOR_OFFSETS_RIGHT : INDICATOR_OFFSETS_LEFT;
+  APP_CONSTANTS.INDICATOR.BASE_OFFSET_X = offsets.x;
+  APP_CONSTANTS.INDICATOR.BASE_OFFSET_Y = offsets.y;
+}

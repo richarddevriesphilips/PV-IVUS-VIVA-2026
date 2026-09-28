@@ -9,6 +9,7 @@ interface Component3TomoViewProps {
   segmentRightTime?: number;
   middleFrameTime?: number; // Independent middle frame time controlled by draggable handle
   scale?: "normal" | "compact"; // Add scale prop for touch screen
+  ivusFramesDir?: string; // Which leg's IVUS frame sequence to display
 }
 
 // Helper function to calculate lumen diameter from frame number
@@ -294,14 +295,37 @@ function SegmentTomoViewDefault1() {
   return <div />;
 }
 
+function SegmentTomoViewDefault2() {
+  return <div />;
+}
+
+function SegmentTomoViewDefault3() {
+  return <div />;
+}
+
+function SegmentTomoViewDefault4() {
+  return (
+    <div
+      className="absolute bottom-[41.5%] left-[41.5%] right-[41.5%] top-[41.75%]"
+      data-name="Segment Tomo view/Default"
+    ></div>
+  );
+}
+
+function SegmentTomoViewDefault5() {
+  return <div />;
+}
+
 function SegmentTomoView({
   videoTime,
   frameNumber,
   scale = "normal",
+  framesDir,
 }: {
   videoTime: number;
   frameNumber: number;
   scale?: "normal" | "compact";
+  framesDir?: string;
 }) {
   const isCompact = scale === "compact";
   const containerSize = isCompact
@@ -325,6 +349,7 @@ function SegmentTomoView({
         <IVUSFramePlayer
           currentTime={videoTime}
           className={`${videoSize} rounded-full`}
+          framesDir={framesDir}
         />
         
         {/* Measurement Overlay */}
@@ -348,10 +373,12 @@ function SegmentTomoView1({
   videoTime,
   frameNumber,
   scale = "normal",
+  framesDir,
 }: {
   videoTime: number;
   frameNumber: number;
   scale?: "normal" | "compact";
+  framesDir?: string;
 }) {
   const isCompact = scale === "compact";
   const containerSize = isCompact
@@ -377,6 +404,7 @@ function SegmentTomoView1({
         <IVUSFramePlayer
           currentTime={videoTime}
           className={`${videoSize} rounded-full`}
+          framesDir={framesDir}
         />
         
         {/* Measurement Overlay */}
@@ -412,10 +440,12 @@ function SegmentTomoView2({
   videoTime,
   frameNumber,
   scale = "normal",
+  framesDir,
 }: {
   videoTime: number;
   frameNumber: number;
   scale?: "normal" | "compact";
+  framesDir?: string;
 }) {
   const isCompact = scale === "compact";
   const containerSize = isCompact
@@ -440,6 +470,7 @@ function SegmentTomoView2({
       <IVUSFramePlayer
         currentTime={videoTime}
         className={`${videoSize} rounded-full`}
+        framesDir={framesDir}
       />
       
       {/* Measurement Overlay */}
@@ -798,6 +829,7 @@ export default function Component3TomoView({
   segmentRightTime = 0,
   middleFrameTime = 0,
   scale = "normal",
+  ivusFramesDir,
 }: Component3TomoViewProps) {
   // Convert time to frame numbers for metrics display (assuming 30 FPS)
   const leftFrameNumber = Math.round(segmentLeftTime * 30);
@@ -818,6 +850,7 @@ export default function Component3TomoView({
         videoTime={segmentLeftTime}
         frameNumber={leftFrameNumber}
         scale={scale}
+        framesDir={ivusFramesDir}
       />
 
       {/* Middle View - Middle */}
@@ -825,6 +858,7 @@ export default function Component3TomoView({
         videoTime={middleFrameTime}
         frameNumber={middleFrameNumber}
         scale={scale}
+        framesDir={ivusFramesDir}
       />
 
       {/* Right View - Proximal */}
@@ -832,6 +866,7 @@ export default function Component3TomoView({
         videoTime={segmentRightTime}
         frameNumber={rightFrameNumber}
         scale={scale}
+        framesDir={ivusFramesDir}
       />
     </div>
   );

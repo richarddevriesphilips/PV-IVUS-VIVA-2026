@@ -6,6 +6,8 @@ interface IVUSFramePlayerProps {
   className?: string;
   onLoadedMetadata?: (e?: any) => void;
   onError?: (e?: any) => void;
+  /** Directory (absolute URL path) containing frame_%04d.jpg - defaults to the Left Leg frames. */
+  framesDir?: string;
 }
 
 /**
@@ -18,7 +20,8 @@ export function IVUSFramePlayer({
   currentTime,
   className = '',
   onLoadedMetadata,
-  onError
+  onError,
+  framesDir = '/intrasight-distant-future/assets/ivus-frames'
 }: IVUSFramePlayerProps) {
   const canvasRef = useRef(null as HTMLCanvasElement | null);
   const [framesLoaded, setFramesLoaded] = useState(false);
@@ -29,6 +32,16 @@ export function IVUSFramePlayer({
   const FPS = 30;
   const DURATION = APP_CONSTANTS.DURATION;
   const PRELOAD_RANGE = 10; // Preload frames ahead and behind
+
+  /**
+   * Reset the cache whenever we switch which leg's frames we're showing -
+   * otherwise a frame number cached from the previous leg would be reused.
+   */
+  useEffect(() => {
+    frameCache.current.clear();
+    loadingQueue.current.clear();
+    setFramesLoaded(false);
+  }, [framesDir]);
 
   /**
    * Get frame number from current time
@@ -43,8 +56,8 @@ export function IVUSFramePlayer({
    */
   const getFramePath = useCallback((frameNumber: number): string => {
     const paddedNumber = frameNumber.toString().padStart(4, '0');
-    return `/intrasight-distant-future/assets/ivus-frames/frame_${paddedNumber}.jpg`;
-  }, []);
+    return `${framesDir}/frame_${paddedNumber}.jpg`;
+  }, [framesDir]);
 
   /**
    * Load a single frame
@@ -155,7 +168,7 @@ export function IVUSFramePlayer({
         console.error(error);
         if (onError) onError();
       });
-  }, [loadFrame, onLoadedMetadata, onError]);
+  }, [loadFrame, onLoadedMetadata, onError, framesDir]);
 
   /**
    * Update displayed frame when currentTime changes

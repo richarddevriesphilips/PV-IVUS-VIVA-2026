@@ -15,6 +15,8 @@ interface PullbackRecordingMainScreenProps {
   onXRayRecordingStart?: (currentRecordingTime: number) => void;
   onXRayRecordingStop?: (currentRecordingTime: number) => void;
   isSyncPlaybackEnabled?: boolean;
+  xraySrc: string;
+  ivusSrc: string;
 }
 
 function NavigationBarIgt({ onScreenshotClick }: { onScreenshotClick?: () => void }) {
@@ -236,7 +238,9 @@ export function PullbackRecordingMainScreen({
   getBookmarkButtonText,
   onXRayRecordingStart,
   onXRayRecordingStop,
-  isSyncPlaybackEnabled = true
+  isSyncPlaybackEnabled = true,
+  xraySrc,
+  ivusSrc
 }: PullbackRecordingMainScreenProps) {
   const [recordingTime, setRecordingTime] = useState(0);
   const [isRecording, setIsRecording] = useState(true);
@@ -431,7 +435,7 @@ export function PullbackRecordingMainScreen({
             ref={xrayVideoRef}
             className="object-cover"
             style={{ width: '820px', height: '740px' }}
-            src="/intrasight-distant-future/assets/videos/postrecord.mov"
+            src={xraySrc}
             muted
             playsInline
             preload="auto"
@@ -452,9 +456,10 @@ export function PullbackRecordingMainScreen({
         }}
       >
         <video
+          key={ivusSrc}
           className="object-cover rounded-full"
           style={{ width: '500px', height: '500px' }}
-          src="/intrasight-distant-future/assets/videos/IVUS-recording-export.mp4"
+          src={ivusSrc}
           autoPlay
           loop
           muted

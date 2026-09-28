@@ -1225,8 +1225,12 @@ function Column() {
   const [fluoroOn, setFluoroOn] = useState(false);
   const fluoroOnRef = useRef(fluoroOn);
   fluoroOnRef.current = fluoroOn;
-  const [sequence, setSequence] = useState<"postrecord" | "treatment">("postrecord");
-  const pendingSequence = useRef<"postrecord" | "treatment" | null>(null);
+  // Which leg's pullback is currently active in Intrasight (first pullback is
+  // always the Right Leg; toggles on each "Live" press).
+  const legRef = useRef<"left" | "right">("right");
+  type Sequence = "postrecord-left-leg" | "postrecord-right-leg" | "treatment";
+  const [sequence, setSequence] = useState<Sequence>("postrecord-right-leg");
+  const pendingSequence = useRef<Sequence | null>(null);
   const [seekFrame, setSeekFrame] = useState<number | undefined>(undefined);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   // Tracks the pullback's real frame position even while the pedal is up, so
@@ -1272,12 +1276,24 @@ function Column() {
   const handleMessage = useCallback((e: MessageEvent) => {
     if (!e.data || typeof e.data.type !== "string") return;
 
+    if (e.data.type === "intrasight-leg") {
+      legRef.current = e.data.leg === "left" ? "left" : "right";
+      pendingSequence.current = null;
+      latestFrameRef.current = 0;
+      setSequence(`postrecord-${legRef.current}-leg`);
+      setSeekFrame(0);
+    }
+
     if (e.data.type === "intrasight-phase") {
       setPhase(e.data.phase);
       
       if (e.data.phase === "recording" || e.data.phase === "live") {
         setSeekFrame(0);
         latestFrameRef.current = 0;
+        // A fresh pullback always starts on the current leg's own X-ray
+        // reference, even if the previous pullback ended on "treatment".
+        pendingSequence.current = null;
+        setSequence(`postrecord-${legRef.current}-leg`);
       }
     }
 
@@ -1351,10 +1367,15 @@ function Column1() {
   // from Intrasight's top-right camera button.
   const [seekFrame, setSeekFrame] = useState<number | undefined>(undefined);
   const [hasScreenshot, setHasScreenshot] = useState(false);
+  const [sequence, setSequence] = useState<"postrecord-left-leg" | "postrecord-right-leg">("postrecord-right-leg");
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (!e.data || typeof e.data.type !== "string") return;
+
+      if (e.data.type === "intrasight-leg") {
+        setSequence(e.data.leg === "left" ? "postrecord-left-leg" : "postrecord-right-leg");
+      }
 
       if (e.data.type === "intrasight-screenshot") {
         setSeekFrame(Math.floor(e.data.time * 30));
@@ -1391,7 +1412,7 @@ function Column1() {
       {/* Reference frame - static until a screenshot is sent from Intrasight */}
       {hasScreenshot ? (
         <FramePlayer
-          sequence="postrecord"
+          sequence={sequence}
           isPlaying={false}
           className="w-full flex-1 min-h-0"
           seekToFrame={seekFrame}
