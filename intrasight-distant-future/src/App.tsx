@@ -2453,6 +2453,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
           <div style={{ transform: `scale(${mainScreenScale})`, transformOrigin: "top left", width: 1920, height: 1080 }}>
             <DeployAssistScreen
               pullbacks={deployAssistPullbacks}
+              initialSelectedLeg={leg}
               onBackToIVUS={() => setAppPhase("analysis")}
               onGoLive={handleGoLive}
             />

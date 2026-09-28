@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Circle } from "lucide-react";
 import { NavigationBar } from "./NavigationBar";
 import {
   APP_CONSTANTS,
@@ -10,6 +11,7 @@ import {
   RulerPathPoint,
 } from "./constants/appConstants";
 import { BookmarkData, ConfirmedSegment } from "./types";
+import svgPaths from "../imports/svg-htfrh24qmy";
 
 // NOTE: all colors/sizes below are inline styles rather than Tailwind
 // arbitrary-value classNames on purpose - Tailwind's `@source` in
@@ -27,6 +29,7 @@ export interface DeployAssistPullback {
 
 interface DeployAssistScreenProps {
   pullbacks: DeployAssistPullback[];
+  initialSelectedLeg: Leg;
   onBackToIVUS: () => void;
   onGoLive: () => void;
 }
@@ -41,6 +44,7 @@ const TREATMENT_FPS = 30;
 // positioned along their real catheter path regardless of which leg is
 // currently active in the rest of the app.
 const ROADMAP_BOX = { width: 718, height: 796 };
+const LIVE_XRAY_SIZE = { width: 934, height: 938 };
 
 function interpolateRulerPath(path: RulerPathPoint[], progress: number): { x: number; y: number } {
   let lower = path[0];
@@ -56,22 +60,27 @@ function interpolateRulerPath(path: RulerPathPoint[], progress: number): { x: nu
   return { x: lower.x + (upper.x - lower.x) * t, y: lower.y + (upper.y - lower.y) * t };
 }
 
-function getFlagFraction(leg: Leg, time: number): { xFrac: number; yFrac: number } {
+function getRulerPosition(leg: Leg, time: number): { x: number; y: number } {
   const path = leg === "right" ? RULER_PATH_DATA_RIGHT : RULER_PATH_DATA_LEFT;
   const offsets = leg === "right" ? INDICATOR_OFFSETS_RIGHT : INDICATOR_OFFSETS_LEFT;
   const progress = Math.min(Math.max(time / APP_CONSTANTS.DURATION, 0), 1);
-  const { x, y } = interpolateRulerPath(path, progress);
+  const position = interpolateRulerPath(path, progress);
+  return { x: offsets.x + position.x, y: offsets.y + position.y };
+}
+
+function getFlagFraction(leg: Leg, time: number): { xFrac: number; yFrac: number } {
+  const { x, y } = getRulerPosition(leg, time);
   return {
-    xFrac: (offsets.x + x) / ROADMAP_BOX.width,
-    yFrac: (offsets.y + y) / ROADMAP_BOX.height,
+    xFrac: x / ROADMAP_BOX.width,
+    yFrac: y / ROADMAP_BOX.height,
   };
 }
 
-function segmentMidTime(segment: ConfirmedSegment): number {
+function segmentTimeBounds(segment: ConfirmedSegment): { leftTime: number; rightTime: number } {
   const { ILD_LEFT_BOUNDARY, ILD_USABLE_WIDTH } = APP_CONSTANTS.MAIN_SCREEN;
   const leftTime = ((segment.left - ILD_LEFT_BOUNDARY) / ILD_USABLE_WIDTH) * APP_CONSTANTS.DURATION;
   const rightTime = ((segment.left + segment.width - ILD_LEFT_BOUNDARY) / ILD_USABLE_WIDTH) * APP_CONSTANTS.DURATION;
-  return (leftTime + rightTime) / 2;
+  return { leftTime, rightTime };
 }
 
 function Flag({ xFrac, yFrac, color, label }: { xFrac: number; yFrac: number; color: string; label: string | number }) {
@@ -106,6 +115,86 @@ function Flag({ xFrac, yFrac, color, label }: { xFrac: number; yFrac: number; co
         {label}
       </div>
     </div>
+  );
+}
+
+function SegmentOverlay({ leg, segment }: { leg: Leg; segment: ConfirmedSegment }) {
+  const { leftTime, rightTime } = segmentTimeBounds(segment);
+  const centerTime = (leftTime + rightTime) / 2;
+  const pathPoints = Array.from({ length: 51 }, (_, index) => {
+    const time = leftTime + (rightTime - leftTime) * (index / 50);
+    const position = getRulerPosition(leg, time);
+    return {
+      x: (position.x / ROADMAP_BOX.width) * LIVE_XRAY_SIZE.width,
+      y: (position.y / ROADMAP_BOX.height) * LIVE_XRAY_SIZE.height,
+    };
+  });
+
+  let pathD = `M ${pathPoints[0].x} ${pathPoints[0].y}`;
+  for (let index = 1; index < pathPoints.length - 1; index++) {
+    const current = pathPoints[index];
+    const next = pathPoints[index + 1];
+    pathD += ` Q ${current.x} ${current.y}, ${(current.x + next.x) / 2} ${(current.y + next.y) / 2}`;
+  }
+  const lastPoint = pathPoints[pathPoints.length - 1];
+  const secondLast = pathPoints[pathPoints.length - 2];
+  pathD += ` Q ${secondLast.x} ${secondLast.y}, ${lastPoint.x} ${lastPoint.y}`;
+
+  const leftPosition = getRulerPosition(leg, leftTime);
+  const rightPosition = getRulerPosition(leg, rightTime);
+  const centerX = ((leftPosition.x + rightPosition.x) / 2 / ROADMAP_BOX.width) * LIVE_XRAY_SIZE.width;
+  const centerY = ((leftPosition.y + rightPosition.y) / 2 / ROADMAP_BOX.height) * LIVE_XRAY_SIZE.height;
+  const timeDelta = (rightTime - leftTime) * 0.05;
+  const beforePosition = getRulerPosition(leg, centerTime - timeDelta);
+  const afterPosition = getRulerPosition(leg, centerTime + timeDelta);
+  const dx = ((afterPosition.x - beforePosition.x) / ROADMAP_BOX.width) * LIVE_XRAY_SIZE.width;
+  const dy = ((afterPosition.y - beforePosition.y) / ROADMAP_BOX.height) * LIVE_XRAY_SIZE.height;
+  const rotationAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+  return (
+    <>
+      <svg
+        aria-hidden="true"
+        viewBox={`0 0 ${LIVE_XRAY_SIZE.width} ${LIVE_XRAY_SIZE.height}`}
+        preserveAspectRatio="none"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 60, pointerEvents: "none" }}
+      >
+        <path
+          d={pathD}
+          stroke="rgba(255, 255, 255, 0.25)"
+          strokeWidth="36"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
+      <div
+        style={{
+          position: "absolute",
+          left: `${(centerX / LIVE_XRAY_SIZE.width) * 100}%`,
+          top: `${(centerY / LIVE_XRAY_SIZE.height) * 100}%`,
+          transform: `translate(-50%, -50%) rotate(${rotationAngle}deg)`,
+          zIndex: 63,
+          pointerEvents: "none",
+          backgroundColor: "#000000",
+          border: "1px solid #FFFFFF",
+          borderRadius: 15,
+          padding: "0 10px",
+          height: 23,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          whiteSpace: "nowrap",
+          color: "#FFFFFF",
+          fontFamily: "CentraleSans, sans-serif",
+          fontSize: 14,
+          fontWeight: 700,
+          lineHeight: "20px",
+        }}
+      >
+        {segment.label} {segment.length} mm
+      </div>
+    </>
   );
 }
 
@@ -188,7 +277,7 @@ function PullbackCard({
   );
 }
 
-function ActionBarButton({ label, onClick, primary }: { label: string; onClick?: () => void; primary?: boolean }) {
+function ActionBarButton({ label, icon, onClick, primary }: { label: string; icon: React.ReactNode; onClick?: () => void; primary?: boolean }) {
   return (
     <button
       onClick={onClick}
@@ -208,14 +297,16 @@ function ActionBarButton({ label, onClick, primary }: { label: string; onClick?:
         cursor: onClick ? "pointer" : "default",
       }}
     >
+      <span style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        {icon}
+      </span>
       {label}
     </button>
   );
 }
 
-export function DeployAssistScreen({ pullbacks, onBackToIVUS, onGoLive }: DeployAssistScreenProps) {
-  const [checkedLegs, setCheckedLegs] = useState<Set<Leg>>(() => new Set(pullbacks.map((p) => p.leg)));
-  const [overlayLegs, setOverlayLegs] = useState<Set<Leg>>(new Set());
+export function DeployAssistScreen({ pullbacks, initialSelectedLeg, onBackToIVUS, onGoLive }: DeployAssistScreenProps) {
+  const [checkedLegs, setCheckedLegs] = useState<Set<Leg>>(() => new Set([initialSelectedLeg]));
   const [isSpacebarPressed, setIsSpacebarPressed] = useState(false);
   const [frame, setFrame] = useState(0);
   const frameIntervalRef = useRef<number | null>(null);
@@ -274,7 +365,7 @@ export function DeployAssistScreen({ pullbacks, onBackToIVUS, onGoLive }: Deploy
           Deploy Assist
         </p>
         <p style={{ margin: "12px 0 0", fontFamily: "CentraleSans, sans-serif", fontWeight: 400, fontSize: 16, lineHeight: "22px", color: "rgba(255,255,255,0.8)" }}>
-          Select a pullback to show on live X-ray
+          Select pullbacks to show on live X-ray
         </p>
       </div>
 
@@ -301,33 +392,6 @@ export function DeployAssistScreen({ pullbacks, onBackToIVUS, onGoLive }: Deploy
             <p style={{ color: "#8c8c8c", fontFamily: "CentraleSans, sans-serif", fontSize: 16 }}>No pullbacks recorded yet.</p>
           )}
         </div>
-        <button
-          onClick={() => setOverlayLegs(new Set(checkedLegs))}
-          disabled={checkedLegs.size === 0}
-          style={{
-            position: "absolute",
-            left: 28,
-            bottom: 20,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 16px",
-            borderRadius: 2,
-            border: "none",
-            backgroundColor: "#696969",
-            color: "#e8e8e8",
-            fontFamily: "CentraleSans, sans-serif",
-            fontSize: 16,
-            lineHeight: "22px",
-            cursor: checkedLegs.size === 0 ? "default" : "pointer",
-            opacity: checkedLegs.size === 0 ? 0.5 : 1,
-          }}
-        >
-          Add to Live X-Ray
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="#e8e8e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
       </div>
 
       {/* Right panel: Live X-Ray (treatment footage, gated by spacebar) */}
@@ -363,31 +427,12 @@ export function DeployAssistScreen({ pullbacks, onBackToIVUS, onGoLive }: Deploy
         >
           <p style={{ margin: 0, fontFamily: "CentraleSans, sans-serif", fontSize: 20, color: "#FFFFFF" }}>Live X-Ray</p>
         </div>
-        {!isSpacebarPressed && (
-          <div
-            style={{
-              position: "absolute",
-              right: 16,
-              top: 18,
-              backgroundColor: "rgba(0,0,0,0.6)",
-              color: "#FFFFFF",
-              fontFamily: "CentraleSans, sans-serif",
-              fontSize: 14,
-              padding: "8px 12px",
-              borderRadius: 4,
-            }}
-          >
-            Hold spacebar for live X-ray
-          </div>
-        )}
-
         {pullbacks
-          .filter((pb) => overlayLegs.has(pb.leg))
+          .filter((pb) => checkedLegs.has(pb.leg))
           .map((pb) => (
             <div key={pb.leg}>
               {pb.segments.map((segment) => {
-                const { xFrac, yFrac } = getFlagFraction(pb.leg, segmentMidTime(segment));
-                return <Flag key={`seg-${pb.leg}-${segment.id}`} xFrac={xFrac} yFrac={yFrac} color="#FF3DAE" label={segment.label} />;
+                return <SegmentOverlay key={`seg-${pb.leg}-${segment.id}`} leg={pb.leg} segment={segment} />;
               })}
               {pb.bookmarks.map((bookmark) => {
                 const { xFrac, yFrac } = getFlagFraction(pb.leg, bookmark.time);
@@ -400,12 +445,18 @@ export function DeployAssistScreen({ pullbacks, onBackToIVUS, onGoLive }: Deploy
       {/* Bottom action bar */}
       <div style={{ position: "absolute", left: 16, top: 1024, width: 1888, height: 40, display: "flex", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 16 }}>
-          <ActionBarButton label="Annotate" />
-          <ActionBarButton label="Save Frame" />
+          <ActionBarButton
+            label="Annotate"
+            icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d={svgPaths.p2de5ed80} fill="#E8E8E8" /></svg>}
+          />
+          <ActionBarButton
+            label="Save Frame"
+            icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d={svgPaths.p28d83c80} fill="#E8E8E8" /></svg>}
+          />
         </div>
         <div style={{ display: "flex", gap: 16 }}>
-          <ActionBarButton label="Back to IVUS" onClick={onBackToIVUS} />
-          <ActionBarButton label="Live" onClick={onGoLive} primary />
+          <ActionBarButton label="Back to IVUS" icon={<ArrowLeft size={24} />} onClick={onBackToIVUS} />
+          <ActionBarButton label="Live" icon={<Circle size={16} fill="currentColor" />} onClick={onGoLive} primary />
         </div>
       </div>
     </div>
