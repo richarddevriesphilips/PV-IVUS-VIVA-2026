@@ -118,6 +118,10 @@ export default function App() {
   // uses the Right Leg; pressing "Live" afterwards switches to the Left Leg
   // (and toggles back on each subsequent "Live" press).
   const [leg, setLeg] = useState<Leg>("right");
+  const [xrayDurations, setXRayDurations] = useState<Record<Leg, number>>({
+    right: APP_CONSTANTS.DURATION,
+    left: APP_CONSTANTS.DURATION,
+  });
   const videoSources = LEG_VIDEO_SOURCES[leg];
 
   // Core application state
@@ -1427,8 +1431,9 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     };
   }, [manuallyHidden]);
 
-  const handleXRayDurationChange = (xrayDuration: number) => {
+  const handleXRayDurationChange = (xrayDuration: number, targetLeg: Leg = leg) => {
     PositionUtils.setXRayDuration(xrayDuration);
+    setXRayDurations((previous) => ({ ...previous, [targetLeg]: xrayDuration }));
     setXRayDuration(xrayDuration);
   };
 
@@ -2465,6 +2470,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
             <DeployAssistScreen
               pullbacks={deployAssistPullbacks}
               initialSelectedLeg={leg}
+              xrayDurations={xrayDurations}
               onBackToIVUS={() => setAppPhase("analysis")}
               onGoLive={handleGoLive}
             />

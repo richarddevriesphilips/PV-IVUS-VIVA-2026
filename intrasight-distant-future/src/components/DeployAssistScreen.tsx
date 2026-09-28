@@ -30,6 +30,7 @@ export interface DeployAssistPullback {
 interface DeployAssistScreenProps {
   pullbacks: DeployAssistPullback[];
   initialSelectedLeg: Leg;
+  xrayDurations: Record<Leg, number>;
   onBackToIVUS: () => void;
   onGoLive: () => void;
 }
@@ -60,16 +61,16 @@ function interpolateRulerPath(path: RulerPathPoint[], progress: number): { x: nu
   return { x: lower.x + (upper.x - lower.x) * t, y: lower.y + (upper.y - lower.y) * t };
 }
 
-function getRulerPosition(leg: Leg, time: number): { x: number; y: number } {
+function getRulerPosition(leg: Leg, time: number, xrayDuration: number): { x: number; y: number } {
   const path = leg === "right" ? RULER_PATH_DATA_RIGHT : RULER_PATH_DATA_LEFT;
   const offsets = leg === "right" ? INDICATOR_OFFSETS_RIGHT : INDICATOR_OFFSETS_LEFT;
-  const progress = Math.min(Math.max(time / APP_CONSTANTS.DURATION, 0), 1);
+  const progress = Math.min(Math.max(time / xrayDuration, 0), 1);
   const position = interpolateRulerPath(path, progress);
   return { x: offsets.x + position.x, y: offsets.y + position.y };
 }
 
-function getFlagFraction(leg: Leg, time: number): { xFrac: number; yFrac: number } {
-  const { x, y } = getRulerPosition(leg, time);
+function getFlagFraction(leg: Leg, time: number, xrayDuration: number): { xFrac: number; yFrac: number } {
+  const { x, y } = getRulerPosition(leg, time, xrayDuration);
   return {
     xFrac: x / ROADMAP_BOX.width,
     yFrac: y / ROADMAP_BOX.height,
@@ -118,12 +119,12 @@ function Flag({ xFrac, yFrac, color, label }: { xFrac: number; yFrac: number; co
   );
 }
 
-function SegmentOverlay({ leg, segment }: { leg: Leg; segment: ConfirmedSegment }) {
+function SegmentOverlay({ leg, segment, xrayDuration }: { leg: Leg; segment: ConfirmedSegment; xrayDuration: number }) {
   const { leftTime, rightTime } = segmentTimeBounds(segment);
   const centerTime = (leftTime + rightTime) / 2;
   const pathPoints = Array.from({ length: 51 }, (_, index) => {
     const time = leftTime + (rightTime - leftTime) * (index / 50);
-    const position = getRulerPosition(leg, time);
+    const position = getRulerPosition(leg, time, xrayDuration);
     return {
       x: (position.x / ROADMAP_BOX.width) * LIVE_XRAY_SIZE.width,
       y: (position.y / ROADMAP_BOX.height) * LIVE_XRAY_SIZE.height,
@@ -140,13 +141,13 @@ function SegmentOverlay({ leg, segment }: { leg: Leg; segment: ConfirmedSegment 
   const secondLast = pathPoints[pathPoints.length - 2];
   pathD += ` Q ${secondLast.x} ${secondLast.y}, ${lastPoint.x} ${lastPoint.y}`;
 
-  const leftPosition = getRulerPosition(leg, leftTime);
-  const rightPosition = getRulerPosition(leg, rightTime);
+  const leftPosition = getRulerPosition(leg, leftTime, xrayDuration);
+  const rightPosition = getRulerPosition(leg, rightTime, xrayDuration);
   const centerX = ((leftPosition.x + rightPosition.x) / 2 / ROADMAP_BOX.width) * LIVE_XRAY_SIZE.width;
   const centerY = ((leftPosition.y + rightPosition.y) / 2 / ROADMAP_BOX.height) * LIVE_XRAY_SIZE.height;
   const timeDelta = (rightTime - leftTime) * 0.05;
-  const beforePosition = getRulerPosition(leg, centerTime - timeDelta);
-  const afterPosition = getRulerPosition(leg, centerTime + timeDelta);
+  const beforePosition = getRulerPosition(leg, centerTime - timeDelta, xrayDuration);
+  const afterPosition = getRulerPosition(leg, centerTime + timeDelta, xrayDuration);
   const dx = ((afterPosition.x - beforePosition.x) / ROADMAP_BOX.width) * LIVE_XRAY_SIZE.width;
   const dy = ((afterPosition.y - beforePosition.y) / ROADMAP_BOX.height) * LIVE_XRAY_SIZE.height;
   const rotationAngle = Math.atan2(dy, dx) * (180 / Math.PI);
@@ -211,7 +212,11 @@ function PullbackCard({
   const hasAnnotations = pullback.segments.length > 0 || pullback.bookmarks.length > 0;
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={`${checked ? "Deselect" : "Select"} ${pullback.label}`}
+      aria-pressed={checked}
       style={{
         position: "relative",
         width: 229,
@@ -220,16 +225,21 @@ function PullbackCard({
         overflow: "hidden",
         borderRadius: 2,
         flexShrink: 0,
+        padding: 0,
+        border: "none",
+        appearance: "none",
+        textAlign: "left",
+        color: "#FFFFFF",
+        cursor: "pointer",
       }}
     >
       <img
         src={thumbnailSrc}
-        alt={pullback.label}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        alt=""
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
       />
-      <button
-        onClick={onToggle}
-        aria-label={`Toggle ${pullback.label}`}
+      <span
+        aria-hidden="true"
         style={{
           position: "absolute",
           left: 8,
@@ -251,7 +261,7 @@ function PullbackCard({
             <path d="M2 8.5L6 12.5L14 3.5" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
-      </button>
+      </span>
       <div
         style={{
           position: "absolute",
@@ -273,7 +283,7 @@ function PullbackCard({
           ? ` \u00b7 ${pullback.segments.length} segment${pullback.segments.length === 1 ? "" : "s"}, ${pullback.bookmarks.length} bookmark${pullback.bookmarks.length === 1 ? "" : "s"}`
           : " \u00b7 No annotations yet"}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -305,7 +315,7 @@ function ActionBarButton({ label, icon, onClick, primary }: { label: string; ico
   );
 }
 
-export function DeployAssistScreen({ pullbacks, initialSelectedLeg, onBackToIVUS, onGoLive }: DeployAssistScreenProps) {
+export function DeployAssistScreen({ pullbacks, initialSelectedLeg, xrayDurations, onBackToIVUS, onGoLive }: DeployAssistScreenProps) {
   const [checkedLegs, setCheckedLegs] = useState<Set<Leg>>(() => new Set([initialSelectedLeg]));
   const [isSpacebarPressed, setIsSpacebarPressed] = useState(false);
   const [frame, setFrame] = useState(0);
@@ -432,10 +442,10 @@ export function DeployAssistScreen({ pullbacks, initialSelectedLeg, onBackToIVUS
           .map((pb) => (
             <div key={pb.leg}>
               {pb.segments.map((segment) => {
-                return <SegmentOverlay key={`seg-${pb.leg}-${segment.id}`} leg={pb.leg} segment={segment} />;
+                return <SegmentOverlay key={`seg-${pb.leg}-${segment.id}`} leg={pb.leg} segment={segment} xrayDuration={xrayDurations[pb.leg]} />;
               })}
               {pb.bookmarks.map((bookmark) => {
-                const { xFrac, yFrac } = getFlagFraction(pb.leg, bookmark.time);
+                const { xFrac, yFrac } = getFlagFraction(pb.leg, bookmark.time, xrayDurations[pb.leg]);
                 return <Flag key={`bm-${pb.leg}-${bookmark.id}`} xFrac={xFrac} yFrac={yFrac} color="#FF9F19" label={bookmark.id} />;
               })}
             </div>
