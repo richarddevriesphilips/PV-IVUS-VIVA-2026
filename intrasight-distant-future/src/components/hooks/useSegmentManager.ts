@@ -230,6 +230,18 @@ export function useSegmentManager() {
   }, []);
 
   /**
+   * Load a previously completed pullback's confirmed segments back in (used
+   * when Deploy Assist sends the user back to another leg's review screen).
+   */
+  const restorePullback = useCallback((segments: ConfirmedSegment[]) => {
+    setIsSegmentActive(false);
+    setEditingSegmentId(null);
+    setOriginalSegmentData(null);
+    setConfirmedSegments(segments);
+    setNextSegmentId(segments.reduce((max, s) => Math.max(max, s.id + 1), APP_CONSTANTS.INITIAL_NEXT_SEGMENT_ID));
+  }, []);
+
+  /**
    * Reset all segments to initial state
    */
   const resetSegments = useCallback(() => {
@@ -275,6 +287,7 @@ export function useSegmentManager() {
     handleEditConfirmedSegment,
     updateScrubberPosition,
     handleMiddleFrameDrag,
+    restorePullback,
     resetSegments,
     
     // Utilities

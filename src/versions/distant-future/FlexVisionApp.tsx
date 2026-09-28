@@ -243,13 +243,13 @@ function SystemState() {
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !e.repeat) {
+      if ((e.code === "Space" || e.code === "F13") && !e.repeat) {
         e.preventDefault();
         setFluoroOn(true);
       }
     };
     const onUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
+      if (e.code === "Space" || e.code === "F13") {
         setFluoroOn(false);
       }
     };
@@ -1240,10 +1240,10 @@ function Column() {
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !e.repeat) setFluoroOn(true);
+      if ((e.code === "Space" || e.code === "F13") && !e.repeat) setFluoroOn(true);
     };
     const onUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") setFluoroOn(false);
+      if (e.code === "Space" || e.code === "F13") setFluoroOn(false);
     };
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type === "intrasight-fluoro") {

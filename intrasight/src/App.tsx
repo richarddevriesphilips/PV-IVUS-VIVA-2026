@@ -35,12 +35,12 @@ export default function App() {
   // Send fluoro pedal (spacebar) events to parent window
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !e.repeat) {
+      if ((e.code === "Space" || e.code === "F13") && !e.repeat) {
         window.parent.postMessage({ type: "intrasight-fluoro", on: true }, "*");
       }
     };
     const onUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
+      if (e.code === "Space" || e.code === "F13") {
         window.parent.postMessage({ type: "intrasight-fluoro", on: false }, "*");
       }
     };

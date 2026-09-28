@@ -20,7 +20,7 @@ import SegmentButton from "./imports/SegmentButton";
 import popoverSvgPaths from "./imports/svg-626nhpiffb";
 import { IVUSMeasurementOverlay } from "./components/IVUSMeasurementOverlay";
 import { ILDPathOverlay } from "./components/ILDPathOverlay";
-import { DeployAssistScreen } from "./components/DeployAssistScreen";
+import { DeployAssistScreen, deployAnnotationKey } from "./components/DeployAssistScreen";
 
 // Import utilities and hooks
 import { APP_CONSTANTS, Leg, setActiveLeg } from "./components/constants/appConstants";
@@ -213,12 +213,12 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   // Use capture phase so this fires before any component handlers
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !e.repeat) {
+      if ((e.code === "Space" || e.code === "F13") && !e.repeat) {
         window.parent.postMessage({ type: "intrasight-fluoro", on: true }, "*");
       }
     };
     const onUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
+      if (e.code === "Space" || e.code === "F13") {
         window.parent.postMessage({ type: "intrasight-fluoro", on: false }, "*");
       }
     };
@@ -1106,8 +1106,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   };
 
   // Wrapper for editing confirmed segment - navigates to middle frame
-  const handleEditConfirmedSegment = (segmentId: number) => {
-    // Find the segment being edited
+  const handleEditConfirmedSegment = (segmentId: number) => {    // Find the segment being edited
     const segmentToEdit = segmentManager.confirmedSegments.find(s => s.id === segmentId);
     if (!segmentToEdit) return;
 
@@ -1130,6 +1129,58 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     // Now call the original segment edit handler
     segmentManager.handleEditConfirmedSegment(segmentId);
   };
+
+  // Deploy Assist "Edit": go back to the review screen of the pullback the
+  // annotation belongs to (switching legs if needed) with it made editable.
+  const [pendingDeployEdit, setPendingDeployEdit] = useState<{ kind: "segment" | "bookmark"; id: number } | null>(null);
+
+  // Annotations the user hid from Deploy Assist - kept here (not in the screen
+  // component) so they stay hidden after leaving and re-entering deploy mode.
+  const [hiddenDeployAnnotations, setHiddenDeployAnnotations] = useState<Set<string>>(() => new Set());
+
+  const handleHideDeployAnnotation = (targetLeg: Leg, kind: "segment" | "bookmark", id: number) => {
+    setHiddenDeployAnnotations((prev) => new Set(prev).add(deployAnnotationKey(targetLeg, kind, id)));
+  };
+
+  const handleEditDeployAnnotation = (targetLeg: Leg, kind: "segment" | "bookmark", id: number) => {
+    if (targetLeg !== leg) {
+      const target = pullbackHistory[targetLeg];
+      setPullbackHistory((prev) => ({
+        ...prev,
+        [leg]: { segments: segmentManager.confirmedSegments, bookmarks: bookmarkManager.bookmarks },
+      }));
+      setActiveLeg(targetLeg);
+      setActiveBorderLeg(targetLeg);
+      setLeg(targetLeg);
+      window.parent.postMessage({ type: "intrasight-leg", leg: targetLeg }, "*");
+
+      const restoredBookmarks = target?.bookmarks ?? [];
+      segmentManager.restorePullback(target?.segments ?? []);
+      bookmarkManager.setBookmarks(restoredBookmarks);
+      bookmarkManager.setNextBookmarkId(
+        restoredBookmarks.reduce((max, b) => Math.max(max, b.id + 1), APP_CONSTANTS.INITIAL_NEXT_BOOKMARK_ID)
+      );
+    }
+
+    setAppPhase("analysis");
+    window.parent.postMessage({ type: "intrasight-phase", phase: "analysis" }, "*");
+    setPendingDeployEdit({ kind, id });
+  };
+
+  // Applied from an effect so a leg switch's restored segments/bookmarks have
+  // landed in state before the annotation is selected.
+  useEffect(() => {
+    if (!pendingDeployEdit || appPhase !== "analysis") return;
+    if (pendingDeployEdit.kind === "segment") {
+      if (!segmentManager.confirmedSegments.some((s) => s.id === pendingDeployEdit.id)) return;
+      handleEditConfirmedSegment(pendingDeployEdit.id);
+    } else {
+      const bookmark = bookmarkManager.bookmarks.find((b) => b.id === pendingDeployEdit.id);
+      if (!bookmark) return;
+      handleBookmarkClick(bookmark);
+    }
+    setPendingDeployEdit(null);
+  }, [pendingDeployEdit, appPhase, segmentManager.confirmedSegments, bookmarkManager.bookmarks]);
 
   // Frame stepping functionality
   const stepFrame = useCallback((direction: 'forward' | 'backward') => {
@@ -2471,8 +2522,11 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               pullbacks={deployAssistPullbacks}
               initialSelectedLeg={leg}
               xrayDurations={xrayDurations}
+              hiddenAnnotations={hiddenDeployAnnotations}
               onBackToIVUS={() => setAppPhase("analysis")}
               onGoLive={handleGoLive}
+              onHideAnnotation={handleHideDeployAnnotation}
+              onEditAnnotation={handleEditDeployAnnotation}
             />
           </div>
         </div>

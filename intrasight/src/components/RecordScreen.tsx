@@ -107,7 +107,7 @@ export default function RecordScreen({ onStopRecording }: RecordScreenProps) {
   // Spacebar event listeners for virtual footpedal (hold to show X-ray)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Space' && !event.repeat) {
+      if ((event.code === 'Space' || event.code === 'F13') && !event.repeat) {
         event.preventDefault(); // Prevent page scroll
         
         // Use precise time for accurate X-ray timing
@@ -120,7 +120,7 @@ export default function RecordScreen({ onStopRecording }: RecordScreenProps) {
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code === 'Space') {
+      if (event.code === 'Space' || event.code === 'F13') {
         event.preventDefault(); // Prevent page scroll
         
         const preciseTime = preciseRecordingTimeRef.current;

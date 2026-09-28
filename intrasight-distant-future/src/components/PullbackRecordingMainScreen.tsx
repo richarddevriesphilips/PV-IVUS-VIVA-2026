@@ -325,7 +325,7 @@ export function PullbackRecordingMainScreen({
   // which was leaving the X-ray video stuck visible/advancing after release.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat) {
+      if ((e.code === 'Space' || e.code === 'F13') && !e.repeat) {
         e.preventDefault();
         setIsSpacebarPressed(true);
         window.parent.postMessage({ type: "intrasight-fluoro", on: true }, "*");
@@ -335,7 +335,7 @@ export function PullbackRecordingMainScreen({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
+      if (e.code === 'Space' || e.code === 'F13') {
         e.preventDefault();
         setIsSpacebarPressed(false);
         window.parent.postMessage({ type: "intrasight-fluoro", on: false }, "*");
