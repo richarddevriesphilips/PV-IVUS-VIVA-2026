@@ -8,7 +8,7 @@ import { PositionUtils } from './utils/positionUtils';
 import { BookmarkData } from './types';
 
 interface PullbackRecordingMainScreenProps {
-  onStartAnalysis: () => void;
+  onStartAnalysis: (actualDuration: number) => void;
   bookmarks: BookmarkData[];
   onBookmarkToggle: (position: number, time: number, xrayPosition?: { x: number; y: number }) => void;
   getBookmarkButtonText: (position: number) => string;
@@ -357,9 +357,10 @@ export function PullbackRecordingMainScreen({
     // Guard against double-stop (auto-stop firing right before/after a manual click).
     if (!isRecording) return;
     setIsRecording(false);
+    const actualDuration = Math.min(recordingTimeRef.current, APP_CONSTANTS.DURATION);
     // Small delay before transitioning to analysis
     setTimeout(() => {
-      onStartAnalysis();
+      onStartAnalysis(actualDuration);
     }, 500);
   };
 

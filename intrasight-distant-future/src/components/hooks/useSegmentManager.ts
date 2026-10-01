@@ -28,8 +28,8 @@ export function useSegmentManager() {
   /**
    * Start adding a new segment at the current scrubber position
    */
-  const handleAddSegment = useCallback((currentScrubberPosition: number) => {
-    const { left, position } = SegmentUtils.calculateInitialSegmentPosition(currentScrubberPosition);
+  const handleAddSegment = useCallback((currentScrubberPosition: number, maxRight?: number) => {
+    const { left, position, width } = SegmentUtils.calculateInitialSegmentPosition(currentScrubberPosition, maxRight);
     
     // Store the current scrubber position for collision detection
     setScrubberPosition(currentScrubberPosition);
@@ -43,7 +43,7 @@ export function useSegmentManager() {
     
     setSegmentLeft(left);
     setSegmentPosition(position);
-    setSegmentWidth(APP_CONSTANTS.INITIAL_SEGMENT_WIDTH);
+    setSegmentWidth(width);
     setSegmentType("lumen");
     setIsSegmentActive(true);
   }, []);
@@ -51,8 +51,8 @@ export function useSegmentManager() {
   /**
    * Handle segment resize from drag handles with scrubber collision detection
    */
-  const handleSegmentResize = useCallback((newLeft: number, newWidth: number) => {
-    const { left, width } = SegmentUtils.constrainSegmentResize(newLeft, newWidth);
+  const handleSegmentResize = useCallback((newLeft: number, newWidth: number, maxRight?: number) => {
+    const { left, width } = SegmentUtils.constrainSegmentResize(newLeft, newWidth, maxRight);
     
     // Calculate the new segment boundaries
     const newRightEdge = left + width;
@@ -91,8 +91,8 @@ export function useSegmentManager() {
   /**
    * Handle segment movement (dragging the whole segment)
    */
-  const handleSegmentMove = useCallback((newLeft: number) => {
-    const constrainedLeft = SegmentUtils.constrainSegmentMovement(newLeft, segmentWidth);
+  const handleSegmentMove = useCallback((newLeft: number, maxRight?: number) => {
+    const constrainedLeft = SegmentUtils.constrainSegmentMovement(newLeft, segmentWidth, maxRight);
     
     // Calculate the offset of the middle handle relative to the old segment position
     const oldMiddleOffset = middleHandlePosition - segmentLeft;
@@ -107,17 +107,17 @@ export function useSegmentManager() {
   /**
    * Increase segment size
    */
-  const handleSegmentSizeIncrease = useCallback(() => {
-    const newWidth = SegmentUtils.adjustSegmentSize(segmentWidth, segmentLeft, true);
-    handleSegmentResize(segmentLeft, newWidth);
+  const handleSegmentSizeIncrease = useCallback((maxRight?: number) => {
+    const newWidth = SegmentUtils.adjustSegmentSize(segmentWidth, segmentLeft, true, maxRight);
+    handleSegmentResize(segmentLeft, newWidth, maxRight);
   }, [segmentWidth, segmentLeft, handleSegmentResize]);
 
   /**
    * Decrease segment size
    */
-  const handleSegmentSizeDecrease = useCallback(() => {
-    const newWidth = SegmentUtils.adjustSegmentSize(segmentWidth, segmentLeft, false);
-    handleSegmentResize(segmentLeft, newWidth);
+  const handleSegmentSizeDecrease = useCallback((maxRight?: number) => {
+    const newWidth = SegmentUtils.adjustSegmentSize(segmentWidth, segmentLeft, false, maxRight);
+    handleSegmentResize(segmentLeft, newWidth, maxRight);
   }, [segmentWidth, segmentLeft, handleSegmentResize]);
 
   /**

@@ -11,7 +11,7 @@ interface NoXRayOverlayProps {
  */
 export function NoXRayOverlay({ timeDifference, direction }: NoXRayOverlayProps) {
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'flex-start', pointerEvents: 'none', zIndex: 30 }}>
+    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'flex-start', pointerEvents: 'none', zIndex: 70 }}>
       <div style={{ display: 'flex', alignItems: 'stretch', boxShadow: '0px 1px 4px 0px rgba(0,0,0,0.45)' }}>
         {/* Left indicator bar */}
         <div style={{ backgroundColor: '#ff9f19', width: '4px' }} />

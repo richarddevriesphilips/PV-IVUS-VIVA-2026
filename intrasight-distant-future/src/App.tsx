@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { Pencil } from "lucide-react";
 import { NavigationBar } from "./components/NavigationBar";
 import { ILDSection } from "./components/ILDSection";
 import { TouchScreen } from "./components/TouchScreen";
@@ -202,6 +203,25 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   const touchRightVideoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
+  // The ILD track (ILDSection) is itself positioned at `left-4` (16px) within
+  // the main screen, but the scrubber/segment overlay are rendered as its
+  // siblings using the track's own 0-1543 coordinate space directly as a page
+  // `left` style - without this offset they render 16px too far left of the
+  // waveform/track they're meant to sit on.
+  const ILD_SECTION_LEFT_OFFSET = 16;
+
+  // Converts a raw mouse clientX into the ILD track's own 0-1543 coordinate
+  // space by measuring the track's LIVE rendered rect on every call (not a
+  // cached scale factor) - this is what the scrubber drag already does, and
+  // segment handle dragging now shares it so a long drag can't accumulate any
+  // drift between the cursor and the handle.
+  const clientXToTrackPosition = useCallback((clientX: number): number | null => {
+    if (!trackRef.current) return null;
+    const rect = trackRef.current.getBoundingClientRect();
+    const scale = rect.width / APP_CONSTANTS.MAIN_SCREEN.ILD_WIDTH;
+    return (clientX - rect.left) / scale;
+  }, []);
+
   // Let the outer FlexVision shell know which leg's assets are active as soon
   // as Intrasight mounts (the first pullback is always the Right Leg).
   useEffect(() => {
@@ -250,6 +270,36 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   // captured in handleGoLive right before resetBookmarks/resetSegments wipes
   // the in-progress state, so Deploy Assist can still show prior pullbacks.
   const [pullbackHistory, setPullbackHistory] = useState<Partial<Record<Leg, { segments: ConfirmedSegment[]; bookmarks: BookmarkData[] }>>>({});
+  const [pullbackCapturedAt, setPullbackCapturedAt] = useState<Partial<Record<Leg, number>>>({});
+  // How much of the fixed 32s track was actually recorded for each leg (a
+  // pullback can be stopped early) - used to clip the ILD display in review
+  // to only the part that was really captured.
+  const [pullbackDurations, setPullbackDurations] = useState<Record<Leg, number>>({
+    right: APP_CONSTANTS.DURATION,
+    left: APP_CONSTANTS.DURATION,
+  });
+  // Toggles the ILD display in review between the procedural lumen/vessel
+  // waveform ("graphical") and the recorded grayscale longitudinal image
+  // ("classic", same asset used while building the ILD during recording).
+  const [ildViewMode, setIldViewMode] = useState<"graphical" | "classic">("graphical");
+  const [selectedDeployLegs, setSelectedDeployLegs] = useState<Set<Leg> | null>(null);
+
+  // The track-coordinate (0-1543) boundary beyond which nothing was actually
+  // recorded - scrubbing and segment creation/resize/move must not cross it.
+  const recordedRightBoundary = useMemo(() => {
+    const { ILD_LEFT_BOUNDARY, ILD_USABLE_WIDTH } = APP_CONSTANTS.MAIN_SCREEN;
+    const recordedFraction = Math.max(0, Math.min(1, pullbackDurations[leg] / APP_CONSTANTS.DURATION));
+    return ILD_LEFT_BOUNDARY + recordedFraction * ILD_USABLE_WIDTH;
+  }, [leg, pullbackDurations]);
+
+  const toggleDeployLeg = (targetLeg: Leg) => {
+    setSelectedDeployLegs((previous) => {
+      const next = new Set(previous ?? [leg]);
+      if (next.has(targetLeg)) next.delete(targetLeg);
+      else next.add(targetLeg);
+      return next;
+    });
+  };
 
   // Computed values
   // Re-generate waveform data when borders are edited so the ILD stays in sync.
@@ -345,11 +395,15 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
         ? { segments: segmentManager.confirmedSegments, bookmarks: bookmarkManager.bookmarks }
         : pullbackHistory[l];
       if (snapshot) {
-        acc.push({ leg: l, label: l === "right" ? "Right Leg" : "Left Leg", segments: snapshot.segments, bookmarks: snapshot.bookmarks });
+        const capturedAt = pullbackCapturedAt[l];
+        const label = capturedAt === undefined
+          ? "Pullback"
+          : new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(capturedAt);
+        acc.push({ leg: l, label, segments: snapshot.segments, bookmarks: snapshot.bookmarks });
       }
       return acc;
     }, []);
-  }, [leg, segmentManager.confirmedSegments, bookmarkManager.bookmarks, pullbackHistory]);
+  }, [leg, segmentManager.confirmedSegments, bookmarkManager.bookmarks, pullbackHistory, pullbackCapturedAt]);
 
   // Calculate loading progress
   const loadingProgress = (videosLoaded / 4) * 100;
@@ -394,18 +448,23 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
 
   // Handle transition from live to recording phase
   const handleStartRecording = () => {
+    setPullbackCapturedAt((previous) => ({ ...previous, [leg]: Date.now() }));
+    setPullbackDurations((previous) => ({ ...previous, [leg]: APP_CONSTANTS.DURATION }));
     setAppPhase("recording");
     window.parent.postMessage({ type: "intrasight-phase", phase: "recording" }, "*");
   };
 
   // Handle transition from recording to analysis phase
-  const handleStartAnalysis = () => {
+  const handleStartAnalysis = (actualDuration: number = APP_CONSTANTS.DURATION) => {
+    setPullbackDurations((previous) => ({ ...previous, [leg]: actualDuration }));
     setAppPhase("analysis");
     window.parent.postMessage({ type: "intrasight-phase", phase: "analysis" }, "*");
   };
 
   // Handle transition back to live mode
   const handleGoLive = () => {
+    confirmActiveSegmentIfNeeded();
+
     // Stop any playing videos
     if (isPlaying) {
       videoManager.handlePlayPause(true, currentTime, videosLoaded);
@@ -566,6 +625,16 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     return SegmentUtils.calculateSegmentLength(width);
   }, [hasXRayAtTime]);
 
+  // If the user navigates away (e.g. to Deploy Assist, or back to Live) while
+  // a segment is mid-edit, treat it as confirmed rather than silently
+  // discarding the in-progress edit.
+  const confirmActiveSegmentIfNeeded = useCallback(() => {
+    if (!segmentManager.isSegmentActive) return;
+    segmentManager.handleSegmentConfirm(
+      calculateSegmentLengthWithXRayCheck(segmentManager.segmentLeft, segmentManager.segmentWidth)
+    );
+  }, [segmentManager.isSegmentActive, segmentManager.segmentLeft, segmentManager.segmentWidth, segmentManager.handleSegmentConfirm, calculateSegmentLengthWithXRayCheck]);
+
   // Event handlers
   const handlePlayPause = () => {
     const newPlayingState = videoManager.handlePlayPause(isPlaying, currentTime, videosLoaded);
@@ -579,8 +648,8 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     const scale = rect.width / 1543;
     const mouseX = (clientX - rect.left) / scale;
 
-    return PositionUtils.constrainScrubberPosition(mouseX);
-  }, []);
+    return Math.min(PositionUtils.constrainScrubberPosition(mouseX), recordedRightBoundary);
+  }, [recordedRightBoundary]);
 
   const updateTimelineFromScrubberPosition = (position: number) => {
     const newTime = PositionUtils.scrubberPositionToTime(position);
@@ -710,7 +779,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     const newRight = newLeft + newWidth;
     
     // Update the segment manager
-    segmentManager.handleSegmentResize(newLeft, newWidth);
+    segmentManager.handleSegmentResize(newLeft, newWidth, recordedRightBoundary);
     
     // Determine which handle was dragged and show that position
     let handlePosition: number;
@@ -747,7 +816,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
   // Handle segment movement with video frame updates
   const handleSegmentMove = (newLeft: number) => {
     // Update segment position via segment manager
-    segmentManager.handleSegmentMove(newLeft);
+    segmentManager.handleSegmentMove(newLeft, recordedRightBoundary);
   };
 
   // Unified diamond scrubber handlers that work for both screens
@@ -1191,7 +1260,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     
     let newTime: number;
     if (direction === 'forward') {
-      newTime = Math.min(currentTimeValue + stepTime, APP_CONSTANTS.DURATION);
+      newTime = Math.min(currentTimeValue + stepTime, pullbackDurations[leg]);
     } else {
       newTime = Math.max(currentTimeValue - stepTime, 0);
     }
@@ -1208,7 +1277,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     if (!isDiamondDragging) {
       setDiamondTime(newTime);
     }
-  }, [currentTime, segmentManager.isSegmentActive, videoManager]);
+  }, [currentTime, segmentManager.isSegmentActive, videoManager, leg, pullbackDurations]);
 
   const handleNextFrame = useCallback(() => {
     console.log('Next frame clicked');
@@ -1232,7 +1301,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
       setCurrentTime(prevTime => {
         let newTime: number;
         if (direction === 'forward') {
-          newTime = Math.min(prevTime + stepTime, APP_CONSTANTS.DURATION);
+          newTime = Math.min(prevTime + stepTime, pullbackDurations[leg]);
         } else {
           newTime = Math.max(prevTime - stepTime, 0);
         }
@@ -1250,7 +1319,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
         return newTime;
       });
     }, 50); // 20 steps per second = 50ms interval (0.02s steps every 50ms for smooth movement)
-  }, [segmentManager.isSegmentActive, videoManager]);
+  }, [segmentManager.isSegmentActive, videoManager, leg, pullbackDurations]);
 
   const stopContinuousFrameStep = useCallback(() => {
     if (frameStepIntervalRef.current) {
@@ -1342,6 +1411,21 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
     }
   }, [getXRayTimeForPlaybackTime]);
 
+  // Safety net: if the playhead ends up past what was actually recorded for
+  // the active leg (e.g. right after Deploy Assist switches legs), snap it
+  // back - scrubbing/stepping already can't move it past this boundary, but
+  // a leg switch itself doesn't go through those paths.
+  useEffect(() => {
+    if (appPhase !== "analysis") return;
+    const maxTime = pullbackDurations[leg];
+    if (currentTime <= maxTime) return;
+
+    setCurrentTime(maxTime);
+    setScrubberPosition(PositionUtils.timeToScrubberPosition(maxTime));
+    updateVideoTimesWithXRayLogic(maxTime);
+    if (!isDiamondDragging) setDiamondTime(maxTime);
+  }, [appPhase, leg, pullbackDurations, currentTime, updateVideoTimesWithXRayLogic, isDiamondDragging]);
+
   // Video lifecycle effects
   useEffect(() => {
     const updateTime = () => {
@@ -1356,8 +1440,20 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
         }
         
         setCurrentTime(newTime);
-        // Use custom video update that handles X-ray separately
-        updateVideoTimesWithXRayLogic(newTime);
+        // Only correct the X-ray video's position (nearest-frame fallback) here.
+        // The IVUS video driving `newTime` is already at the right spot -
+        // re-seeking it every tick fights the browser's decode pipeline and
+        // stalls playback entirely (readyState never recovers past HAVE_METADATA).
+        const xrayTimeForTick = getXRayTimeForPlaybackTime(newTime);
+        [leftVideoRef, touchLeftVideoRef].forEach((ref) => {
+          if (ref.current && Math.abs(ref.current.currentTime - xrayTimeForTick) > APP_CONSTANTS.TOLERANCES.VIDEO_SYNC) {
+            try {
+              ref.current.currentTime = xrayTimeForTick;
+            } catch (error) {
+              // Ignore seek errors
+            }
+          }
+        });
         
         const newPosition = PositionUtils.timeToScrubberPosition(newTime);
         setScrubberPosition(newPosition);
@@ -2172,13 +2268,15 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
         onNextFrame={handleNextFrame}
         onStartContinuousFrameStep={startContinuousFrameStep}
         onStopContinuousFrameStep={stopContinuousFrameStep}
+        recordedFraction={pullbackDurations[leg] / APP_CONSTANTS.DURATION}
+        viewMode={ildViewMode}
       />
 
       {/* Segment Controls */}
       {!segmentManager.isSegmentActive && segmentManager.confirmedSegments.length === 0 && (
         <div className="absolute left-[1563px] top-[825px]">
           <button
-            onClick={() => segmentManager.handleAddSegment(scrubberPosition)}
+            onClick={() => segmentManager.handleAddSegment(scrubberPosition, recordedRightBoundary)}
             className="bg-[#696969] box-border content-stretch flex flex-row gap-2 h-10 items-center justify-center px-4 py-2 relative rounded-sm shrink-0 w-[227px]"
           >
             <div className="relative shrink-0 size-6">
@@ -2207,7 +2305,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
               length: segment.length
             }))}
             onEdit={(segmentId) => handleEditConfirmedSegment(segmentId)}
-            onAddSegment={() => segmentManager.handleAddSegment(scrubberPosition)}
+            onAddSegment={() => segmentManager.handleAddSegment(scrubberPosition, recordedRightBoundary)}
             onSegmentClick={(segmentId) => handleEditConfirmedSegment(segmentId)}
           />
         </div>
@@ -2217,7 +2315,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
       {!segmentManager.isSegmentActive && (
         <div
           className="absolute cursor-pointer h-[167px] top-[835px] w-12 z-20"
-          style={{ left: `${scrubberPosition - 24}px` }}
+          style={{ left: `${ILD_SECTION_LEFT_OFFSET + scrubberPosition - 24}px` }}
           onMouseDown={handleScrubberMouseDown}
         >
           <div className="absolute bottom-0 left-[-10%] right-[-10%] top-0 pointer-events-auto">
@@ -2235,7 +2333,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
         <div
           className="absolute h-[167px] top-[835px] z-10"
           style={{
-            left: `${segmentManager.segmentLeft}px`,
+            left: `${ILD_SECTION_LEFT_OFFSET + segmentManager.segmentLeft}px`,
             width: `${segmentManager.segmentWidth}px`,
           }}
         >
@@ -2248,6 +2346,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
             currentLeft={segmentManager.segmentLeft}
             currentWidth={segmentManager.segmentWidth}
             middleHandlePosition={segmentManager.middleHandlePosition}
+            clientXToTrackPosition={clientXToTrackPosition}
           />
         </div>
       )}
@@ -2263,8 +2362,8 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
             onConfirm={() => segmentManager.handleSegmentConfirm(calculateSegmentLengthWithXRayCheck(segmentManager.segmentLeft, segmentManager.segmentWidth))}
             onCancel={segmentManager.handleSegmentCancel}
             onDelete={segmentManager.handleSegmentDelete}
-            onSizeIncrease={segmentManager.handleSegmentSizeIncrease}
-            onSizeDecrease={segmentManager.handleSegmentSizeDecrease}
+            onSizeIncrease={() => segmentManager.handleSegmentSizeIncrease(recordedRightBoundary)}
+            onSizeDecrease={() => segmentManager.handleSegmentSizeDecrease(recordedRightBoundary)}
           />
         </div>
       )}
@@ -2274,9 +2373,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
         <div className="flex gap-4">
           <button className="bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm text-[#e8e8e8] w-[214px]">
             <div className="relative shrink-0 size-6">
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                <path d={svgPaths.p2de5ed80} fill="#E8E8E8" />
-              </svg>
+              <Pencil size={24} color="#E8E8E8" />
             </div>
             <div className="font-['CentraleSans',_sans-serif] leading-[0] not-italic relative shrink-0 text-[#e8e8e8] text-[16px] text-left text-nowrap">
               <p className="block leading-[22px] whitespace-pre">Annotate</p>
@@ -2320,7 +2417,10 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
             </div>
           </button>
           <button
-            onClick={() => setAppPhase("deployAssist")}
+            onClick={() => {
+              confirmActiveSegmentIfNeeded();
+              setAppPhase("deployAssist");
+            }}
             className="bg-[rgba(89,89,89,0.55)] box-border content-stretch flex flex-row gap-2 items-center justify-center px-4 py-2 rounded-sm text-[#e8e8e8] w-[214px]"
           >
             <div className="relative shrink-0 size-6">
@@ -2367,7 +2467,10 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
       {/* Right Side Panel */}
       {!segmentManager.isSegmentActive && (
         <div className="absolute left-[1816px] top-[72px] w-[88px] h-[901px]">
-          <VerticalContainer />
+          <VerticalContainer
+            isGraphicIld={ildViewMode === "graphical"}
+            onToggleGraphicIld={() => setIldViewMode((prev) => (prev === "graphical" ? "classic" : "graphical"))}
+          />
         </div>
       )}
 
@@ -2520,7 +2623,8 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
           <div style={{ transform: `scale(${mainScreenScale})`, transformOrigin: "top left", width: 1920, height: 1080 }}>
             <DeployAssistScreen
               pullbacks={deployAssistPullbacks}
-              initialSelectedLeg={leg}
+              checkedLegs={selectedDeployLegs ?? new Set([leg])}
+              onToggleLeg={toggleDeployLeg}
               xrayDurations={xrayDurations}
               hiddenAnnotations={hiddenDeployAnnotations}
               onBackToIVUS={() => setAppPhase("analysis")}

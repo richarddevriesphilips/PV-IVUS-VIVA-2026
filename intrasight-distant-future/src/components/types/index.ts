@@ -99,6 +99,13 @@ export interface ILDSectionProps {
   onNextFrame: () => void;
   onStartContinuousFrameStep: (direction: 'forward' | 'backward') => void;
   onStopContinuousFrameStep: () => void;
+  /** Fraction (0-1) of the pullback that was actually recorded - the waveform
+   * beyond this point is masked out since there's no real data for it. */
+  recordedFraction?: number;
+  /** 'graphical' (default) shows the procedural lumen/vessel waveform;
+   * 'classic' shows the recorded grayscale longitudinal image instead,
+   * toggled via the "Graphic ILD" side-toolbar button. */
+  viewMode?: 'graphical' | 'classic';
 }
 
 export interface ActionBarProps {

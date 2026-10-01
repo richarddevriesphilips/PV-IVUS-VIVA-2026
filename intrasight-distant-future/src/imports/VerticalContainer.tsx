@@ -443,11 +443,12 @@ function GraphicIldIcon() {
   );
 }
 
-function SideButton9() {
+function SideButton9({ isActive, onClick }: { isActive?: boolean; onClick?: () => void }) {
   return (
     <div
-      className="bg-neutral-900 h-[73px] overflow-clip relative rounded-sm shrink-0 w-[88px]"
+      className="bg-neutral-900 h-[73px] overflow-clip relative rounded-sm shrink-0 w-[88px] cursor-pointer hover:bg-neutral-800 transition-colors"
       data-name="SideButton"
+      onClick={onClick}
     >
       <GraphicIldIcon />
       <div className="absolute font-['CentraleSans:Book',_sans-serif] leading-[0] left-11 not-italic text-[14px] text-[rgba(255,255,255,0.8)] text-center text-nowrap top-12 translate-x-[-50%]">
@@ -467,7 +468,7 @@ function SideButton9() {
           <circle
             cx="4"
             cy="4"
-            fill="var(--fill-0, #45DE85)"
+            fill={isActive ? "var(--fill-0, #45DE85)" : "var(--fill-0, #595959)"}
             id="Toggle on"
             r="4"
           />
@@ -477,7 +478,7 @@ function SideButton9() {
   );
 }
 
-export default function VerticalContainer() {
+export default function VerticalContainer({ isGraphicIld, onToggleGraphicIld }: { isGraphicIld?: boolean; onToggleGraphicIld?: () => void } = {}) {
   return (
     <div
       className="box-border content-stretch flex flex-col gap-4 items-start justify-start p-0 relative size-full"
@@ -492,7 +493,7 @@ export default function VerticalContainer() {
       <SideButton6 />
       <SideButton7 />
       <SideButton8 />
-      <SideButton9 />
+      <SideButton9 isActive={isGraphicIld} onClick={onToggleGraphicIld} />
     </div>
   );
 }

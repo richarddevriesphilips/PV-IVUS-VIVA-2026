@@ -407,8 +407,8 @@ export default function RecordScreen({ onStopRecording }: RecordScreenProps) {
       {/* Bottom Recording Timeline Bar */}
       <div className="absolute bg-[#212121] h-[183px] left-[25px] top-[825px] w-[1870px]">
         {/* Timeline Background with IVUS imagery */}
-        <div className="absolute inset-[2.13%_0.5px_2.13%_1px] overflow-clip bg-center bg-cover bg-no-repeat" 
-             style={{ backgroundImage: `url(${ildBackgroundImage})` }}>
+        <div className="absolute inset-[2.13%_0.5px_2.13%_1px] overflow-clip bg-center bg-no-repeat"
+             style={{ backgroundImage: `url(${ildBackgroundImage})`, backgroundSize: '100% 100%' }}>
           
           {/* Dark overlay for unrecorded area - animated via RAF for smooth uninterrupted animation */}
           <div 

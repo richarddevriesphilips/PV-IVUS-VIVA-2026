@@ -12,16 +12,19 @@ export class SegmentUtils {
   /**
    * Calculate initial segment position centered on scrubber
    */
-  static calculateInitialSegmentPosition(scrubberPosition: number): {
+  static calculateInitialSegmentPosition(scrubberPosition: number, maxRight?: number): {
     left: number;
     position: number;
+    width: number;
   } {
     const { ILD_LEFT_BOUNDARY, ILD_RIGHT_BOUNDARY } = APP_CONSTANTS.MAIN_SCREEN;
     const { INITIAL_SEGMENT_WIDTH } = APP_CONSTANTS;
-    
+    const rightBoundary = maxRight ?? ILD_RIGHT_BOUNDARY;
+    const width = Math.min(INITIAL_SEGMENT_WIDTH, Math.max(0, rightBoundary - ILD_LEFT_BOUNDARY));
+
     const minSegmentLeft = ILD_LEFT_BOUNDARY;
-    const maxSegmentLeft = ILD_RIGHT_BOUNDARY - INITIAL_SEGMENT_WIDTH;
-    const desiredSegmentLeft = scrubberPosition - INITIAL_SEGMENT_WIDTH / 2;
+    const maxSegmentLeft = rightBoundary - width;
+    const desiredSegmentLeft = scrubberPosition - width / 2;
     const constrainedSegmentLeft = Math.max(
       minSegmentLeft,
       Math.min(desiredSegmentLeft, maxSegmentLeft)
@@ -29,29 +32,30 @@ export class SegmentUtils {
 
     return {
       left: constrainedSegmentLeft,
-      position: constrainedSegmentLeft + INITIAL_SEGMENT_WIDTH / 2,
+      position: constrainedSegmentLeft + width / 2,
+      width,
     };
   }
 
   /**
    * Constrain segment resize within boundaries
    */
-  static constrainSegmentResize(newLeft: number, newWidth: number): {
+  static constrainSegmentResize(newLeft: number, newWidth: number, maxRight?: number): {
     left: number;
     width: number;
   } {
     const { ILD_LEFT_BOUNDARY, ILD_RIGHT_BOUNDARY } = APP_CONSTANTS.MAIN_SCREEN;
     const { MIN_WIDTH } = APP_CONSTANTS.SEGMENT;
+    const rightBoundary = maxRight ?? ILD_RIGHT_BOUNDARY;
 
+    // Clamp each edge on its own so hitting one limit never moves the other edge.
     const constrainedLeft = Math.max(ILD_LEFT_BOUNDARY, newLeft);
-    const maxWidth = ILD_RIGHT_BOUNDARY - constrainedLeft;
-    const constrainedWidth = Math.min(
-      Math.max(MIN_WIDTH, newWidth),
-      maxWidth
-    );
+    const constrainedRight = Math.min(rightBoundary, newLeft + newWidth);
+    const minWidth = Math.min(MIN_WIDTH, rightBoundary - ILD_LEFT_BOUNDARY);
+    const constrainedWidth = Math.max(minWidth, constrainedRight - constrainedLeft);
     const finalLeft = Math.min(
       constrainedLeft,
-      ILD_RIGHT_BOUNDARY - constrainedWidth
+      rightBoundary - constrainedWidth
     );
 
     return {
@@ -63,12 +67,13 @@ export class SegmentUtils {
   /**
    * Constrain segment movement within boundaries
    */
-  static constrainSegmentMovement(newLeft: number, segmentWidth: number): number {
+  static constrainSegmentMovement(newLeft: number, segmentWidth: number, maxRight?: number): number {
     const { ILD_LEFT_BOUNDARY, ILD_RIGHT_BOUNDARY } = APP_CONSTANTS.MAIN_SCREEN;
-    
+    const rightBoundary = maxRight ?? ILD_RIGHT_BOUNDARY;
+
     return Math.max(
       ILD_LEFT_BOUNDARY,
-      Math.min(newLeft, ILD_RIGHT_BOUNDARY - segmentWidth)
+      Math.min(newLeft, rightBoundary - segmentWidth)
     );
   }
 
@@ -78,13 +83,15 @@ export class SegmentUtils {
   static adjustSegmentSize(
     currentWidth: number,
     segmentLeft: number,
-    increase: boolean
+    increase: boolean,
+    maxRight?: number
   ): number {
     const { SIZE_INCREMENT, MIN_WIDTH } = APP_CONSTANTS.SEGMENT;
-    const { ILD_LEFT_BOUNDARY, ILD_USABLE_WIDTH } = APP_CONSTANTS.MAIN_SCREEN;
-    
+    const { ILD_RIGHT_BOUNDARY } = APP_CONSTANTS.MAIN_SCREEN;
+    const rightBoundary = maxRight ?? ILD_RIGHT_BOUNDARY;
+
     if (increase) {
-      const maxWidth = ILD_USABLE_WIDTH - (segmentLeft - ILD_LEFT_BOUNDARY);
+      const maxWidth = rightBoundary - segmentLeft;
       return Math.min(currentWidth + SIZE_INCREMENT, maxWidth);
     } else {
       return Math.max(currentWidth - SIZE_INCREMENT, MIN_WIDTH);

@@ -6,6 +6,10 @@ import svgPaths from '../imports/svg-htfrh24qmy';
 import { APP_CONSTANTS } from './constants/appConstants';
 import type { ConfirmedSegment } from './types';
 
+// Same grayscale longitudinal image used while the ILD is built up during
+// recording (see RecordingILD.tsx) - reused here for the "classic" view.
+import imgClassicIld from 'figma:asset/a88a842f3a8fb7070c090488a99c78d4f568d185.png';
+
 // Component for confirmed (white) segment display
 function ConfirmedSegment({ segment }: { segment: ConfirmedSegment }) {
   return (
@@ -97,8 +101,17 @@ export function ILDSection({
   onNextFrame,
   onStartContinuousFrameStep,
   onStopContinuousFrameStep,
+  recordedFraction = 1,
+  viewMode = 'graphical',
 }: ILDSectionProps) {
   const frameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Where the actually-recorded portion ends, in the track's own 0-1543 local
+  // coordinate space (recordedFraction applies to the 1403px usable width,
+  // not the 70px label margins on each side).
+  const { ILD_LEFT_BOUNDARY, ILD_USABLE_WIDTH, ILD_WIDTH } = APP_CONSTANTS.MAIN_SCREEN;
+  const recordedEdge = ILD_LEFT_BOUNDARY + Math.max(0, Math.min(1, recordedFraction)) * ILD_USABLE_WIDTH;
+  const unrecordedPercent = Math.max(0, 100 - (recordedEdge / ILD_WIDTH) * 100);
 
   const handlePreviousFrameClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -190,7 +203,13 @@ export function ILDSection({
         <div className="absolute bg-neutral-900 left-0 right-0 top-0 bottom-0" />
 
         {/* Waveform Visualization */}
-        <div className="absolute left-0 right-0 top-0 bottom-0 overflow-hidden">
+        <div className="absolute left-0 right-0 top-0 bottom-0 overflow-hidden" style={{ clipPath: `inset(0 ${unrecordedPercent}% 0 0)` }}>
+          {viewMode === 'classic' ? (
+            <div
+              className="absolute inset-0 bg-center bg-no-repeat"
+              style={{ backgroundImage: `url('${imgClassicIld}')`, backgroundSize: '100% 100%' }}
+            />
+          ) : (
           <svg
             width="1543"
             height="167"
@@ -244,7 +263,16 @@ export function ILDSection({
               className="lumen-waveform-bottom"
             />
           </svg>
+          )}
         </div>
+
+        {/* Unrecorded portion - the pullback was stopped before reaching here */}
+        {unrecordedPercent > 0 && (
+          <div
+            className="absolute bg-[#0e0e0e] top-0 bottom-0 right-0 pointer-events-none"
+            style={{ left: `${100 - unrecordedPercent}%` }}
+          />
+        )}
 
         {/* Co-registration markers */}
         <div className="absolute bottom-0 h-[35px] left-[4.537%] overflow-clip right-[4.537%]">

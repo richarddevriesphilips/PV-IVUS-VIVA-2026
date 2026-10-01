@@ -17,10 +17,11 @@ function Frame40({ revealPercentage }: { revealPercentage: number }) {
   return (
     <div className="absolute inset-0 overflow-clip">
       <div
-        className="absolute bg-center bg-cover bg-no-repeat inset-0 transition-all duration-75 ease-linear"
+        className="absolute bg-center bg-no-repeat inset-0 transition-all duration-75 ease-linear"
         data-name="image 121"
         style={{ 
           backgroundImage: `url('${imgImage121}')`,
+          backgroundSize: '100% 100%',
           clipPath: `inset(0 ${100 - revealPercentage}% 0 0)`
         }}
       />

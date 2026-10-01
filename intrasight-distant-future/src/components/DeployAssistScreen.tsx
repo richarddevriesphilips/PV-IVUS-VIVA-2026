@@ -33,7 +33,8 @@ export const deployAnnotationKey = (leg: Leg, kind: DeployAssistAnnotationKind, 
 
 interface DeployAssistScreenProps {
   pullbacks: DeployAssistPullback[];
-  initialSelectedLeg: Leg;
+  checkedLegs: Set<Leg>;
+  onToggleLeg: (leg: Leg) => void;
   xrayDurations: Record<Leg, number>;
   hiddenAnnotations: Set<string>;
   onBackToIVUS: () => void;
@@ -341,7 +342,7 @@ function PullbackCard({
       style={{
         position: "relative",
         width: 229,
-        height: 309,
+        height: 340,
         backgroundColor: "#000000",
         overflow: "hidden",
         borderRadius: 2,
@@ -395,14 +396,16 @@ function PullbackCard({
           color: "#FFFFFF",
           fontFamily: "CentraleSans, sans-serif",
           fontWeight: 500,
-          fontSize: 10,
-          lineHeight: "14px",
+          fontSize: 16,
+          lineHeight: "22px",
         }}
       >
-        {pullback.label}
-        {hasAnnotations
-          ? ` \u00b7 ${pullback.segments.length} segment${pullback.segments.length === 1 ? "" : "s"}, ${pullback.bookmarks.length} bookmark${pullback.bookmarks.length === 1 ? "" : "s"}`
-          : " \u00b7 No annotations yet"}
+        <div>{pullback.label}</div>
+        <div>
+          {hasAnnotations
+            ? `${pullback.segments.length} segment${pullback.segments.length === 1 ? "" : "s"}, ${pullback.bookmarks.length} bookmark${pullback.bookmarks.length === 1 ? "" : "s"}`
+            : "No annotations yet"}
+        </div>
       </div>
     </button>
   );
@@ -438,7 +441,8 @@ function ActionBarButton({ label, icon, onClick, primary }: { label: string; ico
 
 export function DeployAssistScreen({
   pullbacks,
-  initialSelectedLeg,
+  checkedLegs,
+  onToggleLeg,
   xrayDurations,
   hiddenAnnotations,
   onBackToIVUS,
@@ -446,7 +450,6 @@ export function DeployAssistScreen({
   onHideAnnotation,
   onEditAnnotation,
 }: DeployAssistScreenProps) {
-  const [checkedLegs, setCheckedLegs] = useState<Set<Leg>>(() => new Set([initialSelectedLeg]));
   const [isSpacebarPressed, setIsSpacebarPressed] = useState(false);
   const [frame, setFrame] = useState(0);
   const frameIntervalRef = useRef<number | null>(null);
@@ -511,15 +514,6 @@ export function DeployAssistScreen({
     };
   }, [isSpacebarPressed]);
 
-  const toggleLeg = (leg: Leg) => {
-    setCheckedLegs((prev) => {
-      const next = new Set(prev);
-      if (next.has(leg)) next.delete(leg);
-      else next.add(leg);
-      return next;
-    });
-  };
-
   const framePath = `/frames/treatment/frame_${String(frame + 1).padStart(4, "0")}.jpg`;
 
   return (
@@ -527,7 +521,7 @@ export function DeployAssistScreen({
       <NavigationBar />
 
       <div style={{ position: "absolute", left: 23, top: 101, width: 500 }}>
-        <p style={{ margin: 0, fontFamily: "CentraleSans, sans-serif", fontWeight: 700, fontSize: 32, lineHeight: "36px", color: "rgba(255,255,255,0.8)" }}>
+        <p style={{ margin: 0, fontFamily: "CentraleSans, sans-serif", fontWeight: 500, fontSize: 32, lineHeight: "36px", color: "rgba(255,255,255,0.8)" }}>
           Deploy Assist
         </p>
         <p style={{ margin: "12px 0 0", fontFamily: "CentraleSans, sans-serif", fontWeight: 400, fontSize: 16, lineHeight: "22px", color: "rgba(255,255,255,0.8)" }}>
@@ -552,7 +546,7 @@ export function DeployAssistScreen({
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
           {pullbacks.map((pb) => (
-            <PullbackCard key={pb.leg} pullback={pb} checked={checkedLegs.has(pb.leg)} onToggle={() => toggleLeg(pb.leg)} />
+            <PullbackCard key={pb.leg} pullback={pb} checked={checkedLegs.has(pb.leg)} onToggle={() => onToggleLeg(pb.leg)} />
           ))}
           {pullbacks.length === 0 && (
             <p style={{ color: "#8c8c8c", fontFamily: "CentraleSans, sans-serif", fontSize: 16 }}>No pullbacks recorded yet.</p>
@@ -636,7 +630,7 @@ export function DeployAssistScreen({
         <div style={{ display: "flex", gap: 16 }}>
           <ActionBarButton
             label="Annotate"
-            icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d={svgPaths.p2de5ed80} fill="#E8E8E8" /></svg>}
+            icon={<Pencil size={24} />}
           />
           <ActionBarButton
             label="Save Frame"
