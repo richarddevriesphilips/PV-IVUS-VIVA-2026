@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 import svgPaths from "./svg-paths";
 import FramePlayer from "../../components/FramePlayer";
 import IntrasightWindow from "./IntrasightWindow";
@@ -30,8 +31,19 @@ function PhilipsWordmark() {
 }
 
 function Wordmark() {
+  const navigate = useNavigate();
   return (
-    <div className="content-stretch flex flex-col h-[15px] items-center px-[8px] relative shrink-0" data-name="wordmark">
+    <div
+      className="content-stretch flex flex-col h-[15px] items-center px-[8px] relative shrink-0 cursor-pointer"
+      data-name="wordmark"
+      role="button"
+      tabIndex={0}
+      title="Back to home"
+      onClick={() => navigate("/")}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") navigate("/");
+      }}
+    >
       <PhilipsWordmark />
     </div>
   );
