@@ -1,0 +1,135 @@
+.home {
+  --philips-blue: #0b5ed7;
+  --philips-light-blue: #bdf0ff;
+  box-sizing: border-box;
+  min-height: 100svh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 56px;
+  padding: 56px 32px;
+  color: #fff;
+  background: radial-gradient(ellipse at top, #202428, #080a0c 70%);
+}
+
+.heading {
+  text-align: center;
+}
+
+.heading p {
+  margin: 0 0 12px;
+  font-size: 20px;
+  color: var(--philips-light-blue);
+}
+
+.heading h1 {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.2;
+}
+
+.versions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.version {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 320px;
+  padding: 0;
+  border: 1px solid #505860;
+  border-top: 4px solid var(--philips-blue);
+  border-radius: 8px;
+  background: linear-gradient(145deg, #242a30, #15191d);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 16px 40px #00000040;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.version:hover {
+  border-color: var(--philips-light-blue);
+  background: linear-gradient(145deg, #2c3540, #1b232b);
+  transform: translateY(-4px);
+}
+
+.version:focus-visible {
+  outline: 3px solid var(--philips-light-blue);
+  outline-offset: 6px;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center;
+}
+
+.caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 28px 32px;
+}
+
+.title {
+  font-size: 36px;
+  line-height: 1.2;
+}
+
+.arrow {
+  flex-shrink: 0;
+  color: var(--philips-light-blue);
+}
+
+@media (max-width: 700px) {
+  .home {
+    padding: 36px 24px;
+    gap: 32px;
+  }
+
+  .heading h1 {
+    font-size: 32px;
+  }
+
+  .versions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .version {
+    min-height: 220px;
+  }
+
+  .caption {
+    padding: 24px;
+  }
+
+  .title {
+    font-size: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .version {
+    transition: none;
+  }
+
+  .version:hover {
+    transform: none;
+  }
+}

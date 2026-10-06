@@ -1,11 +1,14 @@
 import { useNavigate } from "react-router";
+import { ArrowUpRight } from "lucide-react";
+import styles from "./SplashScreen.module.css";
+import nearFutureImage from "../../New Asset/near-future-v2.png";
+import distantFutureImage from "../../New Asset/distant-future-v2.png";
 
 interface VersionOption {
   id: string;
   path: string;
   title: string;
-  description: string;
-  available: boolean;
+  image: string;
 }
 
 const VERSIONS: VersionOption[] = [
@@ -13,15 +16,13 @@ const VERSIONS: VersionOption[] = [
     id: "near-future",
     path: "/near-future",
     title: "Near Future",
-    description: "The current FlexVision workflow prototype.",
-    available: true,
+    image: nearFutureImage,
   },
   {
     id: "distant-future",
     path: "/distant-future",
     title: "Distant Future",
-    description: "An early placeholder, based on the near future version.",
-    available: true,
+    image: distantFutureImage,
   },
 ];
 
@@ -29,30 +30,28 @@ export default function SplashScreen() {
   const navigate = useNavigate();
 
   return (
-    <div className="w-screen h-screen bg-black flex flex-col items-center justify-center gap-[48px] text-white">
-      <div className="flex flex-col items-center gap-[12px]">
-        <p className="font-centrale-sans-medium text-[20px] text-white/80">Azurion</p>
-        <h1 className="font-centrale-sans-book text-[40px]">IVUS Flexvision</h1>
-        <p className="font-centrale-sans-book text-[20px] text-white/60">Choose a version to launch</p>
-      </div>
+    <main className={styles.home}>
+      <header className={styles.heading}>
+        <p className="font-centrale-sans-medium">Azurion</p>
+        <h1 className="font-centrale-sans-book">IVUS Flexvision</h1>
+      </header>
 
-      <div className="flex gap-[32px]">
+      <div className={styles.versions}>
         {VERSIONS.map((version) => (
           <button
             key={version.id}
             type="button"
             onClick={() => navigate(version.path)}
-            className="w-[360px] flex flex-col items-start gap-[8px] rounded-[4px] border border-[#3b3b3b] bg-[#171717] px-[24px] py-[20px] text-left transition-colors hover:border-[#41c9fe] hover:bg-[#1f1f1f]"
+            className={`${styles.version} font-centrale-sans-medium`}
           >
-            <span className="font-centrale-sans-medium text-[24px] text-[#41c9fe]">
-              {version.title}
-            </span>
-            <span className="font-centrale-sans-book text-[16px] text-white/60">
-              {version.description}
+            <img className={styles.image} src={version.image} alt="" />
+            <span className={styles.caption}>
+              <span className={styles.title}>{version.title}</span>
+              <ArrowUpRight className={styles.arrow} size={36} aria-hidden="true" />
             </span>
           </button>
         ))}
       </div>
-    </div>
+    </main>
   );
 }
