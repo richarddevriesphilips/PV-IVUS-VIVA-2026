@@ -52,7 +52,7 @@ import rulerSvgPaths from "./imports/svg-rnfs0zgsud";
 // on the next "Live" press), per the current demo script.
 const LEG_VIDEO_SOURCES: Record<Leg, { xray: string; ivus: string; liveIvus: string; ivusFramesDir: string }> = {
   right: {
-    xray: '/intrasight-distant-future/assets/videos/fluoro-right-leg.mov',
+    xray: '/intrasight-distant-future/assets/videos/fluoro-right-leg.mp4',
     ivus: '/intrasight-distant-future/assets/videos/ivus-right-leg.mp4',
     liveIvus: '/intrasight-distant-future/assets/videos/ivus-live-right-leg.mov',
     ivusFramesDir: '/intrasight-distant-future/assets/ivus-frames-right-leg',
@@ -124,6 +124,8 @@ export default function App() {
     left: APP_CONSTANTS.DURATION,
   });
   const videoSources = LEG_VIDEO_SOURCES[leg];
+  // The first pullback (Right Leg) shows vessel measurements only; the second shows lumen + vessel.
+  const vesselOnly = leg === "right";
 
   // Core application state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1648,6 +1650,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
                 <ILDPathOverlay 
                   waveformData={mainScreenWaveformData}
                   currentTime={currentTime}
+                  vesselOnly={vesselOnly}
                 />
               )}
               
@@ -2228,6 +2231,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
                   containerSize={664.617}
                   frameNumber={Math.floor(currentTime * 30) + 1}
                   interactive
+                  showLumen={!vesselOnly}
                 />
               </div>
             </div>
@@ -2238,6 +2242,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
                 segmentRightTime={((segmentManager.segmentLeft + segmentManager.segmentWidth - APP_CONSTANTS.MAIN_SCREEN.ILD_LEFT_BOUNDARY) / APP_CONSTANTS.MAIN_SCREEN.ILD_USABLE_WIDTH) * APP_CONSTANTS.DURATION}
                 middleFrameTime={((segmentManager.middleHandlePosition - APP_CONSTANTS.MAIN_SCREEN.ILD_LEFT_BOUNDARY) / APP_CONSTANTS.MAIN_SCREEN.ILD_USABLE_WIDTH) * APP_CONSTANTS.DURATION}
                 ivusFramesDir={videoSources.ivusFramesDir}
+                vesselOnly={vesselOnly}
               />
             </div>
           )}
@@ -2270,6 +2275,7 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
         onStopContinuousFrameStep={stopContinuousFrameStep}
         recordedFraction={pullbackDurations[leg] / APP_CONSTANTS.DURATION}
         viewMode={ildViewMode}
+        vesselOnly={vesselOnly}
       />
 
       {/* Segment Controls */}
@@ -2453,14 +2459,14 @@ const [screenView, setScreenView] = useState<ScreenView>("main");
       {/* Metrics Display */}
       {!isXRayHidden && !segmentManager.isSegmentActive && (
         <div className="absolute left-[875px] top-[105px] w-[158px] h-[436px]">
-          <MetricsDisplay currentTime={currentTime} duration={duration} isCompact={false} />
+          <MetricsDisplay currentTime={currentTime} duration={duration} isCompact={false} vesselOnly={vesselOnly} />
         </div>
       )}
 
       {/* Metrics Display - Centered when X-ray is hidden */}
       {isXRayHidden && !segmentManager.isSegmentActive && (
         <div className="absolute left-[447px] top-[105px] w-[158px] h-[436px]">
-          <MetricsDisplay currentTime={currentTime} duration={duration} isCompact={false} />
+          <MetricsDisplay currentTime={currentTime} duration={duration} isCompact={false} vesselOnly={vesselOnly} />
         </div>
       )}
 

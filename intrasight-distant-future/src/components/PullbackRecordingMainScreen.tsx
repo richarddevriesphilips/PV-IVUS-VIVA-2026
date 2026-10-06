@@ -6,6 +6,7 @@ import { RecordingILD } from './RecordingILD';
 import { APP_CONSTANTS } from './constants/appConstants';
 import { PositionUtils } from './utils/positionUtils';
 import { BookmarkData } from './types';
+import { isFluoroPedalHeld } from '../utils/fluoroPedal';
 
 interface PullbackRecordingMainScreenProps {
   onStartAnalysis: (actualDuration: number) => void;
@@ -346,6 +347,13 @@ export function PullbackRecordingMainScreen({
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+
+    // Pedal pressed before Record was hit: no new keydown will arrive, so start X-ray now.
+    if (isFluoroPedalHeld()) {
+      setIsSpacebarPressed(true);
+      window.parent.postMessage({ type: "intrasight-fluoro", on: true }, "*");
+      onXRayRecordingStart?.(recordingTimeRef.current);
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);

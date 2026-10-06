@@ -64,6 +64,8 @@ interface IVUSMeasurementOverlayProps {
    * shown while editing.
    */
   interactive?: boolean;
+  /** Also draw/edit the lumen (blue) border. */
+  showLumen?: boolean;
   /**
    * Optional legacy props — accepted for backwards compatibility but no
    * longer used (the overlay now derives shape from keyframes).
@@ -92,6 +94,7 @@ export const IVUSMeasurementOverlay = forwardRef<IVUSMeasurementOverlayHandle, I
   frameNumber = 0,
   containerSize = 350,
   interactive = false,
+  showLumen = true,
 }, ref) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -289,7 +292,7 @@ export const IVUSMeasurementOverlay = forwardRef<IVUSMeasurementOverlayHandle, I
       />
 
       {/* ===== Lumen boundary (blue) ===== */}
-      {interactive && editing !== 'lumen' && (
+      {showLumen && interactive && editing !== 'lumen' && (
         <path
           d={lumenPath}
           fill="none"
@@ -302,14 +305,16 @@ export const IVUSMeasurementOverlay = forwardRef<IVUSMeasurementOverlayHandle, I
           }}
         />
       )}
-      <path
-        d={lumenPath}
-        fill="none"
-        stroke="#21b9ff"
-        strokeWidth={editing === 'lumen' ? 5 : 4}
-        strokeOpacity={editing === 'vessel' ? 0.45 : 0.9}
-        style={{ pointerEvents: 'none' }}
-      />
+      {showLumen && (
+        <path
+          d={lumenPath}
+          fill="none"
+          stroke="#21b9ff"
+          strokeWidth={editing === 'lumen' ? 5 : 4}
+          strokeOpacity={editing === 'vessel' ? 0.45 : 0.9}
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
 
       {/* ===== Click-to-insert hit area (only while editing this border) =====
           Rendered BEFORE the handle dots so the dots' larger hit areas win

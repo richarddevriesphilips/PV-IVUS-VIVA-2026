@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo, memo, startTr
 import NavigationBarIgt from '../imports/NavigationBarIgt';
 import { useBookmarks } from '../contexts/BookmarkContext';
 import NumberedBookmark from './NumberedBookmark';
+import { isFluoroPedalHeld } from '../utils/fluoroPedal';
 // Use public assets for Electron app compatibility
 const ivusVideo = '/intrasight/assets/videos/IVUS recording-export.mp4';
 const xrayVideo = '/intrasight/assets/videos/postrecord.mov';
@@ -58,7 +59,8 @@ export default function RecordScreen({ onStopRecording }: RecordScreenProps) {
   const ildOverlayRef = useRef<HTMLDivElement>(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const maxRecordingTime = 32; // 32 seconds max recording time
-  const [showXRay, setShowXRay] = useState(false); // State to control X-ray visibility
+  // Pedal pressed before Record was hit: no new keydown will arrive, so start X-ray now.
+  const [showXRay, setShowXRay] = useState(isFluoroPedalHeld); // State to control X-ray visibility
   
   // Use ref to track recording time for animation (bypass React rendering)
   const recordingTimeRef = useRef(0);
@@ -76,7 +78,7 @@ export default function RecordScreen({ onStopRecording }: RecordScreenProps) {
   } = useBookmarks();
 
   // Track X-ray press times
-  const [xrayStartTime, setXRayStartTime] = useState<number | null>(null);
+  const [xrayStartTime, setXRayStartTime] = useState<number | null>(() => (isFluoroPedalHeld() ? 0 : null));
 
   // Auto-play both videos when component mounts - they stay in sync
   useEffect(() => {
@@ -259,6 +261,10 @@ export default function RecordScreen({ onStopRecording }: RecordScreenProps) {
   }, [bookmarkCount, maxRecordingTime, bookmarks]);
 
   const handleStopRecording = useCallback(() => {
+    if (xrayStartTimeRef.current !== null) {
+      addXRayTimeRangeRef.current(xrayStartTimeRef.current, preciseRecordingTimeRef.current);
+      setXRayStartTime(null);
+    }
     // Pass the current recording time when manually stopping
     onStopRecording(recordingTimeRef.current);
   }, [onStopRecording]);

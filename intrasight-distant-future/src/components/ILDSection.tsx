@@ -103,6 +103,7 @@ export function ILDSection({
   onStopContinuousFrameStep,
   recordedFraction = 1,
   viewMode = 'graphical',
+  vesselOnly = false,
 }: ILDSectionProps) {
   const frameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -234,10 +235,14 @@ export function ILDSection({
               
               return (
                 <g key={`vessel-segment-${index}`}>
-                  {/* Top section fill (vessel to lumen) */}
-                  <path d={topFillPath} fill={heatmapColor} opacity="0.4" />
-                  {/* Bottom section fill (lumen to vessel) */}
-                  <path d={bottomFillPath} fill={heatmapColor} opacity="0.4" />
+                  {!vesselOnly && (
+                    <>
+                      {/* Top section fill (vessel to lumen) */}
+                      <path d={topFillPath} fill={heatmapColor} opacity="0.4" />
+                      {/* Bottom section fill (lumen to vessel) */}
+                      <path d={bottomFillPath} fill={heatmapColor} opacity="0.4" />
+                    </>
+                  )}
                   {/* Vessel strokes */}
                   <path d={topPath} stroke={APP_CONSTANTS.COLORS.VESSEL_STROKE} strokeWidth="2" fill="none" />
                   <path d={bottomPath} stroke={APP_CONSTANTS.COLORS.VESSEL_STROKE} strokeWidth="2" fill="none" />
@@ -246,6 +251,8 @@ export function ILDSection({
             })}
 
             {/* Lumen Structure (Blue outline only, no fill) */}
+            {!vesselOnly && (
+            <>
             <path
               d={WaveformUtils.generateWaveformPath(waveformData, "lumen", true)}
               stroke={APP_CONSTANTS.COLORS.LUMEN_STROKE}
@@ -262,6 +269,8 @@ export function ILDSection({
               opacity="0.6"
               className="lumen-waveform-bottom"
             />
+            </>
+            )}
           </svg>
           )}
         </div>

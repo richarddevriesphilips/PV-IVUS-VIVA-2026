@@ -6,9 +6,10 @@ import { WaveformUtils } from './utils/waveformUtils';
 interface ILDPathOverlayProps {
   waveformData: WaveformPoint[];
   currentTime: number;
+  vesselOnly?: boolean;
 }
 
-export function ILDPathOverlay({ waveformData, currentTime }: ILDPathOverlayProps) {
+export function ILDPathOverlay({ waveformData, currentTime, vesselOnly = false }: ILDPathOverlayProps) {
   const pathData = useMemo(() => {
     const { ILD_USABLE_WIDTH } = APP_CONSTANTS.MAIN_SCREEN;
     const { BASE_OFFSET_X, BASE_OFFSET_Y } = APP_CONSTANTS.INDICATOR;
@@ -125,20 +126,24 @@ export function ILDPathOverlay({ waveformData, currentTime }: ILDPathOverlayProp
         {/* Vessel segments with heatmap coloring */}
         {pathData.vesselSegments.map((segment, index) => (
             <g key={`vessel-segment-${index}`}>
-              {/* Top section fill (vessel to lumen) */}
-              <path
-                d={segment.topFillPath}
-                fill={segment.color}
-                opacity="0.5"
-                strokeWidth="0"
-              />
-              {/* Bottom section fill (lumen to vessel) */}
-              <path
-                d={segment.bottomFillPath}
-                fill={segment.color}
-                opacity="0.5"
-                strokeWidth="0"
-              />
+              {!vesselOnly && (
+                <>
+                  {/* Top section fill (vessel to lumen) */}
+                  <path
+                    d={segment.topFillPath}
+                    fill={segment.color}
+                    opacity="0.5"
+                    strokeWidth="0"
+                  />
+                  {/* Bottom section fill (lumen to vessel) */}
+                  <path
+                    d={segment.bottomFillPath}
+                    fill={segment.color}
+                    opacity="0.5"
+                    strokeWidth="0"
+                  />
+                </>
+              )}
             {/* Top and bottom strokes - always green with smooth joins */}
             <path
               d={segment.topPath}
@@ -162,6 +167,8 @@ export function ILDPathOverlay({ waveformData, currentTime }: ILDPathOverlayProp
         ))}
         
         {/* Lumen structure lines (no fill, just outline) with smooth rendering */}
+        {!vesselOnly && (
+        <>
         <path
           d={pathData.lumenTopPath}
           stroke={APP_CONSTANTS.COLORS.LUMEN_STROKE}
@@ -180,6 +187,8 @@ export function ILDPathOverlay({ waveformData, currentTime }: ILDPathOverlayProp
           fill="none"
           opacity="0.6"
         />
+        </>
+        )}
       </svg>
     </div>
   );

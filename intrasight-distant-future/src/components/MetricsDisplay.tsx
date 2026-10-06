@@ -5,12 +5,14 @@ interface MetricsDisplayProps {
   currentTime: number;
   duration: number;
   isCompact?: boolean; // For touch screen smaller version
+  vesselOnly?: boolean;
 }
 
 export function MetricsDisplay({
   currentTime,
   duration,
   isCompact = false,
+  vesselOnly = false,
 }: MetricsDisplayProps) {
   void duration; // duration no longer used — kept for backwards-compatible prop signature
 
@@ -123,6 +125,45 @@ export function MetricsDisplay({
               {metrics.plaqueBurden} %
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (vesselOnly) {
+    return (
+      <div className="leading-[0] relative w-[158px] h-[436px] text-left text-nowrap">
+        <div className="absolute bottom-[93.52%] font-['CentraleSans',_sans-serif] font-bold left-0 not-italic right-[4.43%] text-[24px] text-[rgba(255,255,255,0.8)] top-0">
+          <p className="block leading-[28px] text-nowrap whitespace-pre">
+            FRAME #{metrics.frameNumber}
+          </p>
+        </div>
+        <div className="absolute bottom-[83.336%] font-['CentraleSans',_sans-serif] left-0 not-italic right-[27.215%] text-[#8c8c8c] text-[20px] top-[10.183%]">
+          <p className="block leading-[28px] text-nowrap whitespace-pre">
+            Vessel Area
+          </p>
+        </div>
+        <div className="absolute bottom-[76.721%] font-['CentraleSans',_sans-serif] font-bold left-0 right-[41.772%] text-[#23cc72] text-[24px] top-[16.799%]">
+          <p className="block leading-[28px] text-nowrap whitespace-pre">
+            {metrics.vesselArea} mm²
+          </p>
+        </div>
+        <div className="absolute bottom-[69.896%] font-['CentraleSans',_sans-serif] left-0 not-italic right-[43.038%] text-[#8c8c8c] text-[20px] top-[23.623%]">
+          <p className="block leading-[28px] text-nowrap whitespace-pre">
+            Diameter
+          </p>
+        </div>
+        <div className="absolute bottom-[63.28%] font-['CentraleSans',_sans-serif] font-bold left-0 not-italic right-[47.468%] text-[#23cc72] text-[24px] top-[30.239%]">
+          <p className="block leading-[28px] text-nowrap whitespace-pre">
+            {metrics.vesselDiameter} mm
+          </p>
+        </div>
+        <div className="absolute bottom-[57.822%] font-['CentraleSans',_sans-serif] font-bold left-0 not-italic right-0 text-[#23cc72] text-[0px] top-[36.623%]">
+          <p className="leading-[24px] text-[20px] text-nowrap whitespace-pre">
+            <span>{`min ${metrics.vesselMinMax.min} `}</span>
+            <span className="text-[#23cc72]">|</span>
+            <span>{` max ${metrics.vesselMinMax.max} `}</span>
+          </p>
         </div>
       </div>
     );

@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 import svgPaths from "./svg-jyq3b47uuf";
 import { IVUSMeasurementOverlay } from '../components/IVUSMeasurementOverlay';
 import { IVUSFramePlayer } from '../components/IVUSFramePlayer';
 import { getBorderMeasurements } from '../utils/ivusBorders';
+
+const VesselOnlyContext = createContext(false);
 
 interface Component3TomoViewProps {
   segmentLeftTime?: number;
@@ -10,6 +12,7 @@ interface Component3TomoViewProps {
   middleFrameTime?: number; // Independent middle frame time controlled by draggable handle
   scale?: "normal" | "compact"; // Add scale prop for touch screen
   ivusFramesDir?: string; // Which leg's IVUS frame sequence to display
+  vesselOnly?: boolean; // Hide lumen border, lumen diameter and stenosis
 }
 
 // Helper function to calculate lumen diameter from frame number
@@ -63,6 +66,7 @@ function Frame78({
 }: {
   scale?: "normal" | "compact";
 }) {
+  const vesselOnly = useContext(VesselOnlyContext);
   const isCompact = scale === "compact";
   const textSize = isCompact ? "text-[12px]" : "text-[20px]";
   const itemHeight = isCompact ? "h-4" : "h-7";
@@ -77,15 +81,19 @@ function Frame78({
       className={`absolute box-border content-stretch flex flex-col items-start justify-start leading-[0] left-0 not-italic p-0 ${textSize} text-[rgba(255,255,255,0.8)] text-left ${topPosition} ${width}`}
       style={{ fontFamily: "CentraleSans, sans-serif" }}
     >
-      <div className={`${itemHeight} relative shrink-0 w-full`}>
-        <p className={`block ${lineHeight}`}>Lumen Diameter</p>
-      </div>
+      {!vesselOnly && (
+        <div className={`${itemHeight} relative shrink-0 w-full`}>
+          <p className={`block ${lineHeight}`}>Lumen Diameter</p>
+        </div>
+      )}
       <div className={`${itemHeight} relative shrink-0 w-full`}>
         <p className={`block ${lineHeight}`}>Vessel Diameter</p>
       </div>
-      <div className={`${itemHeight} relative shrink-0 w-full`}>
-        <p className={`block ${lineHeight}`}>Stenosis</p>
-      </div>
+      {!vesselOnly && (
+        <div className={`${itemHeight} relative shrink-0 w-full`}>
+          <p className={`block ${lineHeight}`}>Stenosis</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -97,6 +105,7 @@ function Frame79({
   frameNumber: number;
   scale?: "normal" | "compact";
 }) {
+  if (useContext(VesselOnlyContext)) return null;
   // Lumen diameter derived from the same keyframe-traced borders the overlay draws.
   const lumenDiameter = getBorderMeasurements(frameNumber).lumenDiameterMm;
 
@@ -143,6 +152,7 @@ function Frame81({
   frameNumber: number;
   scale?: "normal" | "compact";
 }) {
+  const vesselOnly = useContext(VesselOnlyContext);
   // Vessel diameter derived from the same keyframe-traced borders the overlay draws.
   const vesselDiameter = getBorderMeasurements(frameNumber).vesselDiameterMm;
 
@@ -157,7 +167,7 @@ function Frame81({
   const lineHeight = isCompact
     ? "leading-[16px]"
     : "leading-[24px]";
-  const topPosition = isCompact ? "top-8" : "top-16";
+  const topPosition = vesselOnly ? (isCompact ? "top-5" : "top-9") : (isCompact ? "top-8" : "top-16");
   const width = isCompact ? "w-[52px]" : "w-[79px]";
 
   return (
@@ -201,6 +211,7 @@ function Frame82({
   frameNumber: number;
   scale?: "normal" | "compact";
 }) {
+  if (useContext(VesselOnlyContext)) return null;
   // Plaque burden derived from the same keyframe-traced borders the overlay draws.
   const plaqueBurden = getBorderMeasurements(frameNumber).plaqueBurdenPct;
 
@@ -335,6 +346,7 @@ function SegmentTomoView({
     ? "w-[240px] h-[240px]"
     : "w-[350px] h-[350px]";
   const leftPosition = isCompact ? "left-2" : "left-4";
+  const showLumen = !useContext(VesselOnlyContext);
 
   const lumenDiameter = calculateLumenDiameter(frameNumber);
   const vesselDiameter = calculateVesselDiameter(frameNumber);
@@ -359,6 +371,7 @@ function SegmentTomoView({
             vesselDiameter={vesselDiameter}
             containerSize={actualVideoSize}
             frameNumber={frameNumber}
+            showLumen={showLumen}
           />
         </div>
       </div>
@@ -390,6 +403,7 @@ function SegmentTomoView1({
   const leftPosition = isCompact
     ? "left-[264px]"
     : "left-[416px]";
+  const showLumen = !useContext(VesselOnlyContext);
 
   const lumenDiameter = calculateLumenDiameter(frameNumber);
   const vesselDiameter = calculateVesselDiameter(frameNumber);
@@ -414,6 +428,7 @@ function SegmentTomoView1({
             vesselDiameter={vesselDiameter}
             containerSize={actualVideoSize}
             frameNumber={frameNumber}
+            showLumen={showLumen}
           />
         </div>
       </div>
@@ -457,6 +472,7 @@ function SegmentTomoView2({
   const leftPosition = isCompact
     ? "left-[528px]"
     : "left-[816px]";
+  const showLumen = !useContext(VesselOnlyContext);
 
   const lumenDiameter = calculateLumenDiameter(frameNumber);
   const vesselDiameter = calculateVesselDiameter(frameNumber);
@@ -480,6 +496,7 @@ function SegmentTomoView2({
           vesselDiameter={vesselDiameter}
           containerSize={actualVideoSize}
           frameNumber={frameNumber}
+          showLumen={showLumen}
         />
       </div>
       
@@ -501,6 +518,7 @@ function Frame80({
 }: {
   scale?: "normal" | "compact";
 }) {
+  const vesselOnly = useContext(VesselOnlyContext);
   const isCompact = scale === "compact";
   const textSize = isCompact ? "text-[12px]" : "text-[20px]";
   const itemHeight = isCompact ? "h-4" : "h-7";
@@ -515,15 +533,19 @@ function Frame80({
       className={`absolute box-border content-stretch flex flex-col items-start justify-start leading-[0] left-0 not-italic p-0 ${textSize} text-[rgba(255,255,255,0.8)] text-left ${topPosition} ${width}`}
       style={{ fontFamily: "CentraleSans, sans-serif" }}
     >
-      <div className={`${itemHeight} relative shrink-0 w-full`}>
-        <p className={`block ${lineHeight}`}>Lumen Diameter</p>
-      </div>
+      {!vesselOnly && (
+        <div className={`${itemHeight} relative shrink-0 w-full`}>
+          <p className={`block ${lineHeight}`}>Lumen Diameter</p>
+        </div>
+      )}
       <div className={`${itemHeight} relative shrink-0 w-full`}>
         <p className={`block ${lineHeight}`}>Vessel Diameter</p>
       </div>
-      <div className={`${itemHeight} relative shrink-0 w-full`}>
-        <p className={`block ${lineHeight}`}>Stenosis</p>
-      </div>
+      {!vesselOnly && (
+        <div className={`${itemHeight} relative shrink-0 w-full`}>
+          <p className={`block ${lineHeight}`}>Stenosis</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -535,6 +557,7 @@ function Frame83({
   frameNumber: number;
   scale?: "normal" | "compact";
 }) {
+  if (useContext(VesselOnlyContext)) return null;
   // Lumen diameter derived from the same keyframe-traced borders the overlay draws.
   const lumenDiameter = getBorderMeasurements(frameNumber).lumenDiameterMm;
 
@@ -581,6 +604,7 @@ function Frame84({
   frameNumber: number;
   scale?: "normal" | "compact";
 }) {
+  const vesselOnly = useContext(VesselOnlyContext);
   // Vessel diameter derived from the same keyframe-traced borders the overlay draws.
   const vesselDiameter = getBorderMeasurements(frameNumber).vesselDiameterMm;
 
@@ -595,7 +619,7 @@ function Frame84({
   const lineHeight = isCompact
     ? "leading-[16px]"
     : "leading-[24px]";
-  const topPosition = isCompact ? "top-8" : "top-16";
+  const topPosition = vesselOnly ? (isCompact ? "top-5" : "top-9") : (isCompact ? "top-8" : "top-16");
   const width = isCompact ? "w-[52px]" : "w-[79px]";
 
   return (
@@ -639,6 +663,7 @@ function Frame85({
   frameNumber: number;
   scale?: "normal" | "compact";
 }) {
+  if (useContext(VesselOnlyContext)) return null;
   // Calculate dynamic plaque burden based on frame number
   const calculatePlaqueBurden = (frame: number) => {
     // Calculate lumen diameter using same method as Frame83
@@ -830,6 +855,7 @@ export default function Component3TomoView({
   middleFrameTime = 0,
   scale = "normal",
   ivusFramesDir,
+  vesselOnly = false,
 }: Component3TomoViewProps) {
   // Convert time to frame numbers for metrics display (assuming 30 FPS)
   const leftFrameNumber = Math.round(segmentLeftTime * 30);
@@ -841,6 +867,7 @@ export default function Component3TomoView({
   const containerWidth = isCompact ? "w-[788px]" : "w-[1198px]";
 
   return (
+    <VesselOnlyContext.Provider value={vesselOnly}>
     <div
       className={`relative ${containerWidth} ${containerHeight}`}
       data-name="3 Tomo view"
@@ -869,5 +896,6 @@ export default function Component3TomoView({
         framesDir={ivusFramesDir}
       />
     </div>
+    </VesselOnlyContext.Provider>
   );
 }

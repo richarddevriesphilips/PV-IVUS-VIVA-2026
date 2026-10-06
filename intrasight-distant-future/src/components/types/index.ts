@@ -106,6 +106,8 @@ export interface ILDSectionProps {
    * 'classic' shows the recorded grayscale longitudinal image instead,
    * toggled via the "Graphic ILD" side-toolbar button. */
   viewMode?: 'graphical' | 'classic';
+  /** Draw only the vessel outline (no lumen line or lumen-derived stenosis fill). */
+  vesselOnly?: boolean;
 }
 
 export interface ActionBarProps {

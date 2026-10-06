@@ -12,7 +12,7 @@ import {
 // Kept local (rather than imported from App.tsx) to avoid a circular import -
 // this only needs the X-ray/fluoro source, not the full per-leg asset map.
 const LEG_XRAY_SOURCES: Record<Leg, string> = {
-  right: '/intrasight-distant-future/assets/videos/fluoro-right-leg.mov',
+  right: '/intrasight-distant-future/assets/videos/fluoro-right-leg.mp4',
   left: '/intrasight-distant-future/assets/videos/fluoro-left-leg.mp4',
 };
 
